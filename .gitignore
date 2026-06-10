@@ -6,6 +6,7 @@ node_modules/
 
 # private design docs — full story arc / reveal order; the public repo is the playable
 # build only (PM decision 2026-06-10; flip deliberately, not by accident)
+Misc_Temp_git_ignore/
 SEED_HANDOVER.md
 LiminalCollapse_Naming.md
 WhereDoTheTanksGoWhenTheScreenTurnsOff.jpg

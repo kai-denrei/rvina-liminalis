@@ -3,19 +3,37 @@
 // TANKS is new: Atari Combat (1977) adapted to SEED monochrome amber — layout echoes
 // CombatTankAttack.png (layout only, not colors). One shell per tank, no bounce
 // (basic Combat — architectural decision). All text goes through crt.txt().
+// Era-0 GOALS (the progression layer; game mechanics untouched): each game carries a
+// one-time goal that sets its FLAG, grows the verb, and speaks a 'line' — then the game
+// reverts to its original endless arcade self forever after.
 import {registerMode,setMode,keys} from '../engine.js';
-import {ctx,clear,txt,blk,W,H} from '../crt.js';
-import {state} from '../state.js';
+import {ctx,clear,txt,blk,cw,W,H} from '../crt.js';
+import {state,flags,FLAG,verb,CAP} from '../state.js';
 import {AMBER,DIM,DEEP,WHITE} from '../palette.js';
 
 /* ---------- BALLISTIC (PoC port) ---------- */
 const GND=H-60;
 const turret={x:90,y:GND-15,angle:42,power:62};
 let shotB=null,tgt={x:520,y:GND-6,hit:0},scoreB=0,flash=0;
+let hitsB=0,shotsB=0; // era-0 goal counters: 3 hits within 7 shots (until ERA0_BALLISTIC_DONE)
 function resetTgt(){tgt.x=340+Math.random()*360;tgt.hit=0;}
-function fireB(){if(shotB)return;const r=turret.angle*Math.PI/180,v=turret.power*0.165;shotB={x:turret.x,y:turret.y,vx:Math.cos(r)*v,vy:-Math.sin(r)*v,trail:[]};}
+function fireB(){if(shotB)return;const r=turret.angle*Math.PI/180,v=turret.power*0.165;shotB={x:turret.x,y:turret.y,vx:Math.cos(r)*v,vy:-Math.sin(r)*v,trail:[]};if(!flags.has(FLAG.ERA0_BALLISTIC_DONE))shotsB++;}
+// goal layer only — called when a shot resolves (hit or gone); the physics never changes
+function ballisticGoal(hit){
+  if(flags.has(FLAG.ERA0_BALLISTIC_DONE))return;
+  if(hit){
+    hitsB++;
+    if(hitsB>=3&&shotsB<=7){
+      verb.enable(CAP.MOVE); // the verb accretes: fire -> +move (before the flag, so autosave catches it)
+      flags.set(FLAG.ERA0_BALLISTIC_DONE);
+      setMode('line',{text:'We can FIRE at something...we have power over the world!'});
+      return;
+    }
+  }
+  if(shotsB>=7&&hitsB<3){hitsB=0;shotsB=0;} // 7 shots short of 3 hits: silent reset, fresh attempt
+}
 registerMode('ballistic',{
-  enter(){resetTgt();},
+  enter(){resetTgt();if(!flags.has(FLAG.ERA0_BALLISTIC_DONE)){hitsB=0;shotsB=0;}},
   draw(t){
     clear();
     ctx.fillStyle=DEEP;ctx.fillRect(0,GND,W,2);
@@ -25,10 +43,11 @@ registerMode('ballistic',{
     const tp=.6+.4*Math.sin(t/8);
     if(tgt.hit<=0){blk(tgt.x,tgt.y-6,AMBER,tp,4);blk(tgt.x-4,tgt.y-2,AMBER,tp*.7,4);blk(tgt.x+4,tgt.y-2,AMBER,tp*.7,4);blk(tgt.x,tgt.y+2,AMBER,tp,4);}
     else{for(let i=0;i<12;i++)blk(tgt.x+(Math.random()*24-12),tgt.y-(Math.random()*24),AMBER,Math.random()*tgt.hit,4);tgt.hit-=.05;if(tgt.hit<=0)resetTgt();}
-    if(shotB){shotB.trail.push({x:shotB.x,y:shotB.y});if(shotB.trail.length>16)shotB.trail.shift();shotB.trail.forEach((p,i)=>blk(p.x,p.y,AMBER,(i/shotB.trail.length)*.5,2));shotB.x+=shotB.vx;shotB.y+=shotB.vy;shotB.vy+=0.3;blk(shotB.x,shotB.y,'#fff',1,4);if(tgt.hit<=0&&Math.abs(shotB.x-tgt.x)<14&&Math.abs(shotB.y-(tgt.y-4))<14){tgt.hit=1;scoreB++;flash=8;shotB=null;}else if(shotB.x>W||shotB.y>GND){shotB=null;}}
+    if(shotB){shotB.trail.push({x:shotB.x,y:shotB.y});if(shotB.trail.length>16)shotB.trail.shift();shotB.trail.forEach((p,i)=>blk(p.x,p.y,AMBER,(i/shotB.trail.length)*.5,2));shotB.x+=shotB.vx;shotB.y+=shotB.vy;shotB.vy+=0.3;blk(shotB.x,shotB.y,'#fff',1,4);if(tgt.hit<=0&&Math.abs(shotB.x-tgt.x)<14&&Math.abs(shotB.y-(tgt.y-4))<14){tgt.hit=1;scoreB++;flash=8;shotB=null;ballisticGoal(true);}else if(shotB.x>W||shotB.y>GND){shotB=null;ballisticGoal(false);}}
     if(flash>0){ctx.fillStyle='rgba(255,178,74,'+(flash/30)+')';ctx.fillRect(0,0,W,H);flash--;}
     txt('ANGLE '+Math.round(turret.angle)+'°   PWR '+Math.round(turret.power),50,40,DIM,.9);
-    txt('HITS '+scoreB,W-130,40,AMBER,.9);
+    if(flags.has(FLAG.ERA0_BALLISTIC_DONE))txt('HITS '+scoreB,W-130,40,AMBER,.9); // original endless HUD
+    else{const gs='HITS '+hitsB+'/3   SHOTS '+shotsB+'/7';txt(gs,W-50-cw(gs),40,AMBER,.9);} // goal HUD
     txt('↑↓ AIM  ←→ POWER  SPACE FIRE   ESC MENU',50,H-38,DEEP,.9);
   },
   key(e){
@@ -63,7 +82,16 @@ registerMode('asteroid',{
     rocks.forEach(rk=>{rk.x+=rk.vx;rk.y+=rk.vy;rk.rot+=rk.vr;wrap(rk);drawRock(rk);});
     for(let i=rocks.length-1;i>=0;i--){const rk=rocks[i];for(let j=bullets.length-1;j>=0;j--){if(Math.hypot(rk.x-bullets[j].x,rk.y-bullets[j].y)<rk.r){bullets.splice(j,1);rocks.splice(i,1);scoreA++;if(rk.r>16){rocks.push(newRock(rk.x,rk.y,rk.r*0.55));rocks.push(newRock(rk.x,rk.y,rk.r*0.55));}break;}}}
     if(ship.inv<=0)for(const rk of rocks){if(Math.hypot(rk.x-ship.x,rk.y-ship.y)<rk.r+10){ship.x=W/2;ship.y=H/2;ship.vx=ship.vy=0;ship.inv=90;break;}}
-    if(rocks.length===0)wave(5);
+    if(rocks.length===0){
+      // era-0 goal: the FIRST cleared wave is the threshold (flags.set returns true
+      // only on the first set — afterwards this is the original endless respawn)
+      if(!flags.has(FLAG.ERA0_ASTEROID_DONE)){
+        verb.enable(CAP.HOSTILE_AI); // fire+move proven -> the world may now want things (before the flag, so autosave catches it)
+        flags.set(FLAG.ERA0_ASTEROID_DONE);
+        setMode('line',{text:'We can Fire at something AND move...exhilarating!'});
+      }
+      wave(5);
+    }
     txt('SCORE '+scoreA,50,40,AMBER,.9);
     txt('← → TURN   ↑ THRUST   SPACE FIRE   ESC MENU',50,H-38,DEEP,.9);
   },
@@ -154,8 +182,17 @@ registerMode('tanks',{
     drawTank(E,DIM,false);
     shellStep(P,E,'p');
     shellStep(E,P,'e');
-    // HUD — Combat's score strip, adapted
     const sc=state.scores.tanks;
+    // era-0 goal: first to 3 hits. Player first -> the threshold (fear named, verbs grow).
+    // Enemy first -> both scores fall back to 0-0 and play continues: the machine forgets.
+    if(!flags.has(FLAG.ERA0_TANKS_DONE)){
+      if(sc.p>=3){
+        verb.enable(CAP.QUEST,CAP.PARTY,CAP.RIDDLE); // the era-1 stack (STATE_MODULE.md) — before the flag, so autosave catches it
+        flags.set(FLAG.ERA0_TANKS_DONE);
+        setMode('line',{text:'That enemy wanted to hunt us down... sometimes the world can want something against us... is this fear?'});
+      }else if(sc.e>=3){sc.p=0;sc.e=0;}
+    }
+    // HUD — Combat's score strip, adapted
     txt('YOU '+sc.p,50,40,AMBER,.9);
     txt('IT '+sc.e,W-130,40,DIM,.9);
     txt('← → TURN   ↑ DRIVE   SPACE FIRE   ESC MENU',50,H-38,DEEP,.9);

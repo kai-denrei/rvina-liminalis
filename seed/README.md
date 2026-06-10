@@ -73,8 +73,8 @@ production hosting, see the cache-busting skill's `references/server-headers.md`
 | `engine.js` | rAF loop, mode registry, input bus, reduced-motion, power button, font gate |
 | `crt.js` | SHARED: ctx helpers (`txt`/`blk`/`cw`), `drawFigure`/`drawMini` — this file IS the accretion layer; all canvas text goes through `txt()` |
 | `palette.js` | colour tokens; amber primary; teal "second colour" (one use in V1, at seam 0→1) |
-| `state.js` | the through-line: played flags, year, scores, the command-line log |
-| `console.js` | the machine's voice: `boot`, `select`, `off` |
+| `state.js` | the spine: flags/XP/party/verb/save-load + the through-line (played, year, scores, the log) |
+| `console.js` | the machine's voice: `boot`, `select`, `line` (era-goal beat), `off` |
 | `eras/era0_dot.js` | era 0: `ballistic`, `asteroid`, `tanks` |
 | `eras/era1_tiles.js` | era 1: `topdown` (Ultima-IV loop) |
 | `eras/era2_map.js` | era 2 layout: pure data (grid, items, enemy, exit), node-importable |
@@ -90,6 +90,26 @@ production hosting, see the cache-busting skill's `references/server-headers.md`
 | `sw.js` | service worker: token-keyed `seed-<token>` cache + persistent `seed-fonts` |
 | `manifest.webmanifest` / `icons/` | install metadata + amber-dot icons (era zero) |
 
+## Era 0 — progression (the menu grows)
+
+The select menu starts with **BALLISTIC** alone. Each game carries a one-time
+goal; meeting it sets a flag, unlocks the next menu entry (the newest entry
+flickers until first selected), grows the verb (`fire` → `+move` →
+`+hostile_ai` → `+quest/party/riddle`), and prints a one-line realization in
+the machine's voice (the `line` mode). The goals:
+
+- **BALLISTIC** — 3 hits within 7 shots (the HUD counts `HITS h/3  SHOTS s/7`;
+  7 shots short of 3 hits resets the counters silently — a fresh attempt).
+- **ASTEROID** — clear the first wave.
+- **TANKS** — first to 3 hits. If the enemy gets to 3 first, both scores reset
+  to 0-0 and play continues — the machine forgets.
+
+`EXIT GAME?` appears once all three goals are met. After its goal, each game
+returns to its original endless arcade behavior, and the flags persist across
+reloads (autosave on every first-set flag). `?admin=<target>` pre-arms the
+flags beneath the jump target (e.g. `?admin=tanks` arms ballistic+asteroid
+done; `?admin=ballistic` arms nothing) without ever touching the real save.
+
 ## Era 2 — The Dungeon (1987)
 
 Entered through seam 1→2 from era 1's restored portal: the camera drops into
@@ -101,7 +121,7 @@ looses an arrow (the persisting verb — needs the bow and arrows from the
 treasure room), `i` (the **INV** button on the touch deck) opens the pack,
 `ESC` returns to the menu. **Torch & weight:** your torch burns down in real
 time — light is something you can lose; spares auto-light, and with none lit
-only silhouettes remain. The pack caps at **12 kg** against 14.2 kg of
+only silhouettes remain. The pack caps at **18 kg** against 14.2 kg of
 findable treasure, so you must choose what to keep: tap a row in the pack
 panel to drop a thing where you stand (it stays on that floor cell). A beast
 squats on the only corridor to the exit; arrows are how you argue with it.
@@ -114,3 +134,8 @@ Arrows navigate/steer, `Space`/`Enter` starts from the menu, `SPACE` fires in
 every interactive mode (the persisting verb), `ESC` returns to the menu, `i`
 toggles the era-2 pack (INV on the touch deck), the red power button runs the
 off beat. `prefers-reduced-motion` is respected throughout.
+
+### Pack controls (era 2)
+- `i` (or the INV deck button) opens/closes the pack; `Esc` also closes it — Esc never exits the dungeon.
+- Drop an item: tap/click its row, or select with `↑↓` and drop with `Enter`/`Space`. Dropped things land at your feet and can be re-taken.
+- Pack limit: 18 kg.

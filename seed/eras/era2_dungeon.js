@@ -167,7 +167,7 @@ for(let z=0;z<4;z++){
 const COOL=9;                       // ~9-frame step/turn cooldown (DM cadence)
 let pos={x:ENTRY.x,y:ENTRY.y},facing=ENTRY.facing,hp=3;
 let cool=0,floorItems=[],arrows=[],started=false,T=0;
-const HINT='↑↓ move · ←→ turn · space fire · i pack · esc menu';
+const HINT='↑↓ move · ←→ turn · space fire · i pack';
 
 /* ---------- light ---------- */
 // brightness of a surface at eye-distance d: torch level × depth falloff. At the 0.08
@@ -384,8 +384,8 @@ registerMode('dungeon',{
   key(e){
     const k=e.key;
     if(k==='i'||k==='I'){inv.togglePanel();return;}
-    if(k==='Escape'){setMode('select');return;}
-    if(inv.isOpen())return;           // movement (and the bow) wait while the pack is open
+    if(k==='Escape'){if(inv.isOpen())inv.togglePanel();return;}  // esc only closes the pack — the dungeon's exit is the EXIT (Gerald, 2026-06-11)
+    if(inv.isOpen()){const r=inv.panelKey(k);if(r&&r.dropped)floorItems.push({...r.dropped,x:pos.x,y:pos.y});return;}
     if(k===' '){fire();return;}
     if(cool>0)return;
     if(k==='ArrowLeft'){facing=ORDER[(ORDER.indexOf(facing)+3)%4];cool=COOL;}

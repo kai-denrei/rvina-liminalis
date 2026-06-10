@@ -14,7 +14,7 @@ import {logLine} from '../state.js';
 import {AMBER,DIM,DEEP} from '../palette.js';
 
 /* ---------- constants ---------- */
-const CAP=12;                 // kg — the pack's hard limit
+const CAP=18;                 // kg — roomy at the start (12 was punitive — Gerald, 2026-06-11); the choosing-what-to-keep beat re-stages with heavier loot later
 const BURN=1/5400;            // torch level lost per frame (~90s of light)
 const ARROW_KG=0.1;           // 12 arrows = 1.2kg — consistent with the map's ITEMS kg
 const PARTY=[{name:'CARDEA',carry:'———'},{name:'IOLO',carry:'lute ♪'}]; // fixtures: they carry their own
@@ -202,9 +202,22 @@ export function drawPanel(t){
   // the party carries its own — fixtures, not weight
   for(const p of PARTY){txt(p.name,lx,y,DIM,.65,11);txt(p.carry,vx,y,DIM,.65,11);y+=18;}
 
+  // selection cursor — the keyboard path rides the same rows the taps use
+  if(rows.length){if(sel>=rows.length)sel=rows.length-1;if(sel<0)sel=0;txt('>',PX+10,rows[sel].y+4,AMBER,.95,13);}
+
   // anchored hint at the frame's foot
-  const hint='tap a thing to drop it · i closes';
+  const hint='tap, or ↑↓ + ⏎, to drop · i / esc closes';
   txt(hint,PX+PW/2-cw(hint,11)/2,PY+PH-26,DEEP,.7,11);
+}
+
+/* ---------- keyboard path: select a row, drop with enter ---------- */
+let sel=0;
+export function panelKey(k){
+  if(!open||!rows.length)return null;
+  if(k==='ArrowUp'){sel=(sel+rows.length-1)%rows.length;return null;}
+  if(k==='ArrowDown'){sel=(sel+1)%rows.length;return null;}
+  if(k==='Enter'||k===' '){const r=rows[Math.min(sel,rows.length-1)];return r&&r.act?r.act():null;}
+  return null;
 }
 
 /* ---------- tap-to-drop: the dungeon puts the thing where you stand ---------- */
