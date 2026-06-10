@@ -12,7 +12,7 @@
 // movement collision and arrow hits both route through the single point enemyAt().
 import {registerMode,setMode,reduced} from '../engine.js';
 import {ctx,clear,txt,cw,blk,W,H} from '../crt.js';
-import {logLine,getLog} from '../state.js';
+import {logLine,getLog,party,flags,FLAG} from '../state.js';
 import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js';
 import {GRID,ENTRY,ITEMS,ENEMY,EXIT} from './era2_map.js';
 import * as inv from './era2_inventory.js';
@@ -168,6 +168,10 @@ const COOL=9;                       // ~9-frame step/turn cooldown (DM cadence)
 let pos={x:ENTRY.x,y:ENTRY.y},facing=ENTRY.facing,hp=3;
 let cool=0,floorItems=[],arrows=[],started=false,T=0;
 const HINT='↑↓ move · ←→ turn · space fire · i pack';
+// Iolo waits two cells in from the bottom of the stairs; reaching his cell recruits him.
+// He follows in the header, not the corridor — the era-2 party occupies one cell, DM-style.
+const IOLO_CELL={x:3,y:11};
+let ioloWaiting=false;
 
 /* ---------- light ---------- */
 // brightness of a surface at eye-distance d: torch level × depth falloff. At the 0.08
@@ -186,6 +190,12 @@ function tryStep(s){
   if(enemyAt(nx,ny))return;          // the beast blocks the corridor (live after Threat phase)
   pos.x=nx;pos.y=ny;cool=COOL;
   if(nx===EXIT.x&&ny===EXIT.y){setMode('seam_2_3');return;}   // the doorway out
+  if(ioloWaiting&&nx===IOLO_CELL.x&&ny===IOLO_CELL.y){        // the bard joins the header
+    ioloWaiting=false;
+    party.add({id:'iolo',name:'Iolo',persistent:false,joinedEra:2,data:{instrument:'lute'}});
+    flags.set(FLAG.FOUND_IOLO);
+    logLine('> a bard, waiting in the dark, with his lute.');
+  }
   // walking onto an item cell — taken if the pack can bear it; refusals are logged by inventory
   for(const it of floorItems.filter(i=>i.x===nx&&i.y===ny)){
     if(inv.pickup(it)){logLine('> taken: '+it.id+'.');floorItems.splice(floorItems.indexOf(it),1);}
@@ -249,6 +259,7 @@ function collectSprites(){
   const rel=(x,y)=>({d:(x-pos.x)*F[0]+(y-pos.y)*F[1],lat:(x-pos.x)*R[0]+(y-pos.y)*R[1]});
   for(const it of floorItems){const p=rel(it.x,it.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:it.id});}
   const e=rel(EXIT.x,EXIT.y);if(e.d>-0.3&&e.d<4.3&&Math.abs(e.lat)<2.1)out.push({d:e.d,lat:e.lat,kind:'exit'});
+  if(ioloWaiting){const p=rel(IOLO_CELL.x,IOLO_CELL.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:'iolo'});}
   for(const a of arrows){const p=rel(a.x+a.fx*a.sub,a.y+a.fy*a.sub);if(p.d>0.15&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:'arrow'});}
   if(foe){const p=rel(foe.x,foe.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:'foe'});}
   return out;
@@ -298,9 +309,24 @@ function drawFoe(s){ // the hunched beast: chunky rects/strokes, DIM body, AMBER
   }
   ctx.globalAlpha=1;
 }
+function drawIolo(s){ // a standing figure with a lute, patient in the dark
+  const d=Math.max(s.d,0.5),f=pf(d),b=bright(d);
+  const cx=CX+s.lat*W*f,fy=CY+CY*f-2;
+  ctx.globalAlpha=Math.max(0.2,Math.min(1,b*1.3));
+  ctx.strokeStyle=AMBER;ctx.lineWidth=Math.max(1,2.4*f);
+  ctx.beginPath();ctx.arc(cx,fy-46*f,8*f,0,6.283);ctx.stroke();          // head
+  ctx.beginPath();ctx.moveTo(cx,fy-38*f);ctx.lineTo(cx,fy-14*f);          // body
+  ctx.moveTo(cx,fy-14*f);ctx.lineTo(cx-8*f,fy);ctx.moveTo(cx,fy-14*f);ctx.lineTo(cx+8*f,fy); // legs
+  ctx.moveTo(cx,fy-32*f);ctx.lineTo(cx+11*f,fy-22*f);ctx.stroke();        // arm to the lute
+  ctx.strokeStyle=DIM;
+  ctx.beginPath();ctx.arc(cx+13*f,fy-20*f,6*f,0,6.283);ctx.stroke();      // the lute's body
+  ctx.beginPath();ctx.moveTo(cx+16*f,fy-25*f);ctx.lineTo(cx+22*f,fy-36*f);ctx.stroke(); // its neck
+  ctx.globalAlpha=1;
+}
 function drawSprite(s){
   if(s.kind==='exit'){drawDoor(s);return;}
   if(s.kind==='foe'){drawFoe(s);return;}
+  if(s.kind==='iolo'){drawIolo(s);return;}
   const d=Math.max(s.d,0.42),f=pf(d),b=bright(d);
   const cx=CX+s.lat*W*f,fy=CY+CY*f-2;
   if(s.kind==='arrow'){blk(cx-3*f,CY+36*f,WHITE,Math.min(1,b+0.35),Math.max(2,Math.round(7*f)));return;}
@@ -351,6 +377,7 @@ registerMode('dungeon',{
     pos={x:ENTRY.x,y:ENTRY.y};facing=ENTRY.facing;hp=3;cool=0;arrows=[];
     foe={x:ENEMY.x,y:ENEMY.y,hp:ENEMY.hp};foeStepT=45;foeAtkT=30;foeHurtT=0;flashT=0;
     floorItems=ITEMS.map(it=>({...it}));
+    ioloWaiting=!party.has('iolo');   // first arrival: the bard waits two cells in
     inv.initInventory();
     logLine('> it is dark here.');
   },

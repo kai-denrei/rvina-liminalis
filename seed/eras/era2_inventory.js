@@ -10,14 +10,21 @@
 // Amber family only — no TEAL here; the colour of elsewhere stays in the stone and
 // the surface light. The hero is deliberately unnamed: '———'.
 import {ctx,txt,cw,drawMini,W,H} from '../crt.js';
-import {logLine} from '../state.js';
+import {logLine,party,flags,FLAG} from '../state.js';
 import {AMBER,DIM,DEEP} from '../palette.js';
 
 /* ---------- constants ---------- */
 const CAP=18;                 // kg — roomy at the start (12 was punitive — Gerald, 2026-06-11); the choosing-what-to-keep beat re-stages with heavier loot later
 const BURN=1/5400;            // torch level lost per frame (~90s of light)
 const ARROW_KG=0.1;           // 12 arrows = 1.2kg — consistent with the map's ITEMS kg
-const PARTY=[{name:'CARDEA',carry:'———'},{name:'IOLO',carry:'lute ♪'}]; // fixtures: they carry their own
+
+// The party strip is read from the engine-level party (state.js) — no fixtures.
+// Cardea appears because she persisted through the portal; Iolo once FOUND_IOLO.
+function partyList(){
+  const list=party.members().map(c=>({name:c.name.toUpperCase(),carry:c.id==='iolo'?'lute ♪':'———',bard:c.id==='iolo'}));
+  if(flags.has(FLAG.FOUND_IOLO)&&!party.has('iolo'))list.push({name:'IOLO',carry:'lute ♪',bard:true});
+  return list;
+}
 const r1=v=>Math.round(v*10)/10;
 const f1=v=>r1(v).toFixed(1);
 
@@ -95,7 +102,8 @@ function pips(x,y,n,total,pw,ph,g,a){
 
 /* ---------- header: one line, always on ---------- */
 export function drawHeader(hp){
-  txt('CARDEA · IOLO ♪ · ———',40,28,AMBER,.9,13);     // the hero is deliberately unnamed
+  const strip=partyList().map(p=>p.name+(p.bard?' ♪':'')).concat('———').join(' · ');
+  txt(strip,40,28,AMBER,.9,13);                       // the hero is deliberately unnamed
   const pw=8,ph=11,g=3,py=29;
   const hpW=cw('HP',11)+6+3*(pw+g)-g;
   const tW=cw('TORCH',11)+6+5*(pw+g)-g;
@@ -199,8 +207,8 @@ export function drawPanel(t){
   }
   y+=6;divider(y);y+=10;
 
-  // the party carries its own — fixtures, not weight
-  for(const p of PARTY){txt(p.name,lx,y,DIM,.65,11);txt(p.carry,vx,y,DIM,.65,11);y+=18;}
+  // the party carries its own — read from the engine-level party, not weight
+  for(const p of partyList()){txt(p.name,lx,y,DIM,.65,11);txt(p.carry,vx,y,DIM,.65,11);y+=18;}
 
   // selection cursor — the keyboard path rides the same rows the taps use
   if(rows.length){if(sel>=rows.length)sel=rows.length-1;if(sel<0)sel=0;txt('>',PX+10,rows[sel].y+4,AMBER,.95,13);}

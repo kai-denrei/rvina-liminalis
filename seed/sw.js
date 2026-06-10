@@ -6,7 +6,7 @@
  * cache (except the persistent font cache). Updates follow the power-cycle
  * pattern — the waiting worker is promoted via SKIP_WAITING from pwa.js.
  */
-const CB_TOKEN = "47e6e661";   // bust.sh rewrites this on each build
+const CB_TOKEN = "a1afcd39";   // bust.sh rewrites this on each build
 const CACHE_NAME = "seed-" + CB_TOKEN;
 const FONT_CACHE = "seed-fonts";
 const PRECACHE = ["./"];

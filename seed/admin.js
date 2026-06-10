@@ -5,13 +5,13 @@
 // Invisible to players; works on phones and headless QA alike. Admin sessions never
 // pollute a real save: main.js only wires the store when ?admin= is ABSENT.
 import {setMode} from './engine.js';
-import {state,flags,FLAG} from './state.js';
+import {state,flags,FLAG,party,recruitCardea,getLog} from './state.js';
 
 const ALIAS={era0:'select',basics:'select',era1:'topdown',limina:'topdown',limina1:'topdown',era2:'dungeon',dm:'dungeon'};
 const VALID=new Set(['select','ballistic','asteroid','tanks','seam','topdown','seam_1_2','dungeon','seam_2_3','off']);
 
 // QA handles — ride along on engine.js's window.__seed (created at import time).
-if(window.__seed){window.__seed.flags=flags;window.__seed.state=state;}
+if(window.__seed){window.__seed.flags=flags;window.__seed.state=state;window.__seed.party=party;window.__seed.getLog=getLog;}
 
 const q=new URLSearchParams(location.search).get('admin');
 if(q){
@@ -25,6 +25,14 @@ if(q){
     else if(target!=='ballistic'){flags.set(FLAG.ERA0_BALLISTIC_DONE);flags.set(FLAG.ERA0_ASTEROID_DONE);flags.set(FLAG.ERA0_TANKS_DONE);}
     if(target==='topdown'||target==='seam_1_2')state.year=1985;
     if(target==='dungeon'||target==='seam_2_3')state.year=1987;
+    // ?admin=era1 (topdown) arms ONLY the era-0 flags above — a fresh Limina I.
+    // ?admin=dungeon arms the Limina-I outcome too, so the dungeon header is true:
+    // Cardea recruited (she persists through the portal) and Iolo already found.
+    if(target==='dungeon'||target==='seam_2_3'){
+      recruitCardea();
+      flags.set(FLAG.FOUND_IOLO);
+      party.add({id:'iolo',name:'Iolo',persistent:false,joinedEra:2,data:{instrument:'lute'}});
+    }
     // engine starts in 'boot'; jump once the loop is alive
     setTimeout(()=>setMode(target),350);
   }

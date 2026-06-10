@@ -1,7 +1,7 @@
 # SEED — V1 (cold boot)
 
 A game that ages as you play it. Current build covers era 0 (The Dot), seam 0→1,
-era 1 (The Tile World), seam 1→2, and era 2 (The Dungeon), in a CSS CRT cabinet.
+era 1 (Limina I), seam 1→2, and era 2 (The Dungeon), in a CSS CRT cabinet.
 Vanilla ES modules, no build step.
 
 ## Run
@@ -76,7 +76,8 @@ production hosting, see the cache-busting skill's `references/server-headers.md`
 | `state.js` | the spine: flags/XP/party/verb/save-load + the through-line (played, year, scores, the log) |
 | `console.js` | the machine's voice: `boot`, `select`, `line` (era-goal beat), `off` |
 | `eras/era0_dot.js` | era 0: `ballistic`, `asteroid`, `tanks` |
-| `eras/era1_tiles.js` | era 1: `topdown` (Ultima-IV loop) |
+| `eras/era1_world.js` | era 1 overworld layout: pure data (grid, sites, foes), node-importable |
+| `eras/era1_tiles.js` | era 1: `topdown` (Limina I — camera-follow overworld, quest beats, bow, foes, XP, HUD) |
 | `eras/era2_map.js` | era 2 layout: pure data (grid, items, enemy, exit), node-importable |
 | `eras/era2_dungeon.js` | era 2: `dungeon` (Dungeon-Master grid, scaled-bitmap depth renderer, the beast) |
 | `eras/era2_inventory.js` | era 2 pack: weight cap, torch burn, paper-doll panel, tap-to-drop |
@@ -109,6 +110,33 @@ returns to its original endless arcade behavior, and the flags persist across
 reloads (autosave on every first-set flag). `?admin=<target>` pre-arms the
 flags beneath the jump target (e.g. `?admin=tanks` arms ballistic+asteroid
 done; `?admin=ballistic` arms nothing) without ever touching the real save.
+
+## Era 1 — Limina I (1985)
+
+Entered through seam 0→1 from the era-0 menu's `EXIT GAME?`. The first proper
+world: a 60×45-tile overworld (3×3 screens, camera-follow) of plains, forest,
+marsh, one river, and the sea along the world's whole east edge — the era-0
+"edge of the world" line lives at its shore now. The wizard on the plains
+knows a door once stood beside him and can stand again, but the how of it left
+with someone; rumors heard around the land assemble into a riddle of place,
+the riddle leads to a rescue, the rescued companion half-remembers an old
+ritual — a root, a time the world's own clock keeps, a place she only
+half-sees — and honoring what she teaches opens the portal. It goes down, not
+out. She comes with you.
+
+**Controls:** arrows move (smooth), `SPACE` looses a bolt-arrow (the
+persisting verb, grown into a bow), `ESC` returns to the menu. HP shows as
+pips top-left, with the party strip beside it as companions join; the year and
+a modest `LV n · XP n` sit top-right. XP comes from living — discovering
+biomes, meeting people, reaching landmarks, learning lore, surviving, waiting
+— and least of all from kills. Death is gentle here: you wake where you began,
+flags and XP kept.
+
+**No map, by design.** There is no minimap, no waypoint, no quest arrow —
+memory is the mechanic. The world is small enough to hold in your head and
+each landmark is distinct enough to navigate by a sentence; the adventure is
+reading the land, the way you did on graph paper in 1985. Resist adding a map
+during playtesting fatigue; the absence is the design.
 
 ## Era 2 — The Dungeon (1987)
 
