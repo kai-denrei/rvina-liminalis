@@ -1,7 +1,8 @@
 # SEED — V1 (cold boot)
 
-A game that ages as you play it. V1 covers era 0 (The Dot), seam 0→1, and era 1
-(The Tile World), in a CSS CRT cabinet. Vanilla ES modules, no build step.
+A game that ages as you play it. Current build covers era 0 (The Dot), seam 0→1,
+era 1 (The Tile World), seam 1→2, and era 2 (The Dungeon), in a CSS CRT cabinet.
+Vanilla ES modules, no build step.
 
 ## Run
 
@@ -76,7 +77,12 @@ production hosting, see the cache-busting skill's `references/server-headers.md`
 | `console.js` | the machine's voice: `boot`, `select`, `off` |
 | `eras/era0_dot.js` | era 0: `ballistic`, `asteroid`, `tanks` |
 | `eras/era1_tiles.js` | era 1: `topdown` (Ultima-IV loop) |
+| `eras/era2_map.js` | era 2 layout: pure data (grid, items, enemy, exit), node-importable |
+| `eras/era2_dungeon.js` | era 2: `dungeon` (Dungeon-Master grid, scaled-bitmap depth renderer, the beast) |
+| `eras/era2_inventory.js` | era 2 pack: weight cap, torch burn, paper-doll panel, tap-to-drop |
 | `seams/seam_0_1.js` | `seam`: console → tiles (year tick 1979→1985, grid bleed, figure resolve) |
+| `seams/seam_1_2.js` | tiles → dungeon (1985→1987): the camera drops INTO the figure |
+| `seams/seam_2_3.js` | dungeon → era 3 stub (1987→1992): teal surface light, back to select |
 | `serve.py` | dev server, no-cache headers, port 8420 |
 | `scripts/bust.sh` | cache-bust token runner (also rewrites the SW token) |
 | `public/` | cb-badge.js + cb-shapes/ (visual build receipt assets) |
@@ -84,9 +90,27 @@ production hosting, see the cache-busting skill's `references/server-headers.md`
 | `sw.js` | service worker: token-keyed `seed-<token>` cache + persistent `seed-fonts` |
 | `manifest.webmanifest` / `icons/` | install metadata + amber-dot icons (era zero) |
 
+## Era 2 — The Dungeon (1987)
+
+Entered through seam 1→2 from era 1's restored portal: the camera drops into
+the figure and the god's-eye view is gone — you are inside. First-person on a
+16×16 grid, rendered the Dungeon Master way (pre-scaled wall bitmaps at four
+depths, not raycasting), amber throughout, with teal only as sparse lichen in
+the stone. **Controls:** `↑`/`↓` step forward/back, `←`/`→` turn, `SPACE`
+looses an arrow (the persisting verb — needs the bow and arrows from the
+treasure room), `i` (the **INV** button on the touch deck) opens the pack,
+`ESC` returns to the menu. **Torch & weight:** your torch burns down in real
+time — light is something you can lose; spares auto-light, and with none lit
+only silhouettes remain. The pack caps at **12 kg** against 14.2 kg of
+findable treasure, so you must choose what to keep: tap a row in the pack
+panel to drop a thing where you stand (it stays on that floor cell). A beast
+squats on the only corridor to the exit; arrows are how you argue with it.
+Stepping onto the doorway beyond it runs seam 2→3 (the teal surface light,
+1987→1992) and returns to the menu — era 3 isn't built yet.
+
 ## Controls
 
 Arrows navigate/steer, `Space`/`Enter` starts from the menu, `SPACE` fires in
-every interactive mode (the persisting verb), `ESC` returns to the menu, the
-red power button runs the off beat. `prefers-reduced-motion` is respected
-throughout.
+every interactive mode (the persisting verb), `ESC` returns to the menu, `i`
+toggles the era-2 pack (INV on the touch deck), the red power button runs the
+off beat. `prefers-reduced-motion` is respected throughout.

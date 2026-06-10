@@ -19,6 +19,7 @@ if(matchMedia('(pointer: coarse)').matches){
     '</div>'+
     '<div class="acts">'+
       '<div class="act"><button type="button" class="dk fire" data-key=" " aria-label="Fire"></button><span class="label">FIRE</span></div>'+
+      '<div class="act"><button type="button" class="dk menu" data-key="i" data-norepeat="1" aria-label="Inventory"></button><span class="label">INV</span></div>'+
       '<div class="act"><button type="button" class="dk menu" data-key="Escape" aria-label="Menu"></button><span class="label">MENU</span></div>'+
     '</div>';
   deck.addEventListener('contextmenu',e=>e.preventDefault());
@@ -38,7 +39,7 @@ if(matchMedia('(pointer: coarse)').matches){
       btn.classList.add('held');
       pressKey(k);
       if(timer!==null)clearInterval(timer);
-      timer=setInterval(()=>repeatKey(k),REPEAT_MS);
+      if(!btn.dataset.norepeat)timer=setInterval(()=>repeatKey(k),REPEAT_MS); // INV is a toggle: press/release only
     });
     btn.addEventListener('pointerup',release);
     btn.addEventListener('pointercancel',release);

@@ -10,6 +10,7 @@ const modes={};
 let mode='boot';
 let t=0;
 
+// mode def: {enter?,draw,key?,click?} — click(x,y) receives 800x600 canvas coords (pointer bus below)
 export function registerMode(name,def){modes[name]=def;}
 export function setMode(name,payload){mode=name;const def=modes[name];if(def&&def.enter)def.enter(payload);}
 // dev/QA hook — lets headless tests drive modes directly; harmless client-side
@@ -53,6 +54,15 @@ export function start(){
   const screen=document.getElementById('screen');
   const powerBtn=document.getElementById('power');
   crt.init(cv);
+
+  // pointer bus: client coords -> 800x600 canvas coords; modes opt in via def.click(x,y)
+  cv.addEventListener('pointerdown',e=>{
+    const def=modes[mode];
+    if(!def||!def.click)return;
+    const r=cv.getBoundingClientRect();
+    if(!r.width||!r.height)return;
+    def.click((e.clientX-r.left)*(crt.W/r.width),(e.clientY-r.top)*(crt.H/r.height));
+  });
 
   powerBtn.addEventListener('click',()=>{
     if(mode!=='off'){
