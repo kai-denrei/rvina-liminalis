@@ -12,6 +12,8 @@ let t=0;
 
 export function registerMode(name,def){modes[name]=def;}
 export function setMode(name,payload){mode=name;const def=modes[name];if(def&&def.enter)def.enter(payload);}
+// dev/QA hook — lets headless tests drive modes directly; harmless client-side
+window.__seed={setMode,getMode:()=>mode};
 
 /* ---------- loop (phosphor flicker ported verbatim from the PoC) ---------- */
 function loop(){
@@ -32,6 +34,18 @@ addEventListener('keydown',e=>{
   const def=modes[mode];
   if(def&&def.key)def.key(e);
 });
+
+/* ---------- virtual input (touch deck) — mirrors the physical key path exactly ---------- */
+export function pressKey(k){
+  keys[k]=true;
+  const def=modes[mode];
+  if(def&&def.key)def.key({key:k,preventDefault(){}});
+}
+export function repeatKey(k){ // hold-repeat: keys[k] already true, just re-fire key()
+  const def=modes[mode];
+  if(def&&def.key)def.key({key:k,preventDefault(){}});
+}
+export function releaseKey(k){keys[k]=false;}
 
 /* ---------- start: crt.init, power button, font-load gate (PoC port), then loop ---------- */
 export function start(){

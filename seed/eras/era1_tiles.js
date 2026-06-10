@@ -6,13 +6,16 @@
 // Storyline (2026-06-10): the locked door is the collapsed PORTAL — the threshold itself
 // (RVINA LIMINALIS). The wizard's quest restores it. Companions are named in join order:
 // Cardea (goddess of hinges and thresholds), then Iolo (Ultima companion grammar).
+// Log discipline (Gerald): interactions only. One existential line — 'is there an outside?' —
+// once, when the portal opens. Entering the open portal prompts EXIT GAME? Y (FIRE confirms
+// on the touch deck); confirming runs seam_1_2.
 import {registerMode,setMode,keys} from '../engine.js';
-import {ctx,clear,txt,blk,drawFigure,drawMini,W,H} from '../crt.js';
+import {ctx,clear,txt,cw,blk,drawFigure,drawMini,W,H} from '../crt.js';
 import {state,logLine,getLog} from '../state.js';
 import {AMBER,DIM,DEEP} from '../palette.js';
 
-let fig,bolts,edgeNoted,movedFar;
-let wizard,friends,marsh,door,trail,recruited,party,hasRoot,quest,moonClock;
+let fig,bolts,edgeNoted;
+let wizard,friends,marsh,door,trail,recruited,party,hasRoot,quest,moonClock,exitPrompt;
 const NAMES=['Cardea','Iolo'];
 const PHASE=150;
 function moonIdx(){return Math.floor(moonClock/PHASE)%8;}
@@ -20,7 +23,7 @@ function moonIllum(){return 1-Math.abs(moonIdx()-4)/4;}
 function moonFull(){return moonIdx()===4;}
 function initTop(){
   fig={x:W/2,y:H/2,dir:0};trail=[];bolts=[];
-  recruited=0;party=[];hasRoot=false;quest='idle';moonClock=0;edgeNoted=false;movedFar=0;
+  recruited=0;party=[];hasRoot=false;quest='idle';moonClock=0;edgeNoted=false;exitPrompt=false;
   wizard={x:110,y:110};
   friends=[{x:690,y:490,got:false},{x:160,y:480,got:false}];
   marsh={x:560,y:300};
@@ -45,13 +48,12 @@ function drawTop(t){
   // movement
   let dx=0,dy=0,sp=2.4;
   if(keys['ArrowLeft'])dx-=1;if(keys['ArrowRight'])dx+=1;if(keys['ArrowUp'])dy-=1;if(keys['ArrowDown'])dy+=1;
-  if(dx||dy){fig.dir=Math.atan2(dy,dx);movedFar+=sp;}
+  if(dx||dy){fig.dir=Math.atan2(dy,dx);}
   fig.x+=dx*sp;fig.y+=dy*sp;
   const m=30,cl=Math.max(m,Math.min(W-m,fig.x)),cly=Math.max(m,Math.min(H-m,fig.y));
   if((fig.x!==cl||fig.y!==cly)&&!edgeNoted){edgeNoted=true;logLine('> the world has an edge. for now.');}
   fig.x=cl;fig.y=cly;
   trail.push({x:fig.x,y:fig.y});if(trail.length>260)trail.shift();
-  if(movedFar>240)logLine('> where does it go when you turn it off?');
 
   // marsh (mandrake site)
   ctx.strokeStyle=moonFull()?AMBER:DIM;ctx.lineWidth=2;ctx.globalAlpha=moonFull()?.9:.6;
@@ -94,10 +96,11 @@ function drawTop(t){
   // wizard: accept, then complete
   if(Math.hypot(fig.x-wizard.x,fig.y-wizard.y)<32){
     if(quest==='idle'){quest='active';logLine('> wizard: bring two companions,');logLine('> the mandrake from the marsh at full moon,');logLine('> and i will restore the portal.');}
-    else if(quest==='active'&&recruited>=2&&hasRoot){quest='done';door.open=true;logLine('> the wizard restores the portal.');logLine('> the portal is open.');}
+    else if(quest==='active'&&recruited>=2&&hasRoot){quest='done';door.open=true;logLine('> the wizard restores the portal.');logLine('> the portal is open.');logLine('> is there an outside?');}
   }
-  // TODO seam_1_2 triggers here (era 2 is the next build, not V1)
-  if(door.open&&Math.hypot(fig.x-door.x,fig.y-door.y)<26)logLine('> outside is bigger than inside.');
+  // entering the open portal: the exit prompt (Y, or FIRE on the touch deck) → seam_1_2
+  exitPrompt=door.open&&Math.hypot(fig.x-door.x,fig.y-door.y)<26;
+  if(exitPrompt){const msg='EXIT GAME?  Y';txt(msg,door.x-24-cw(msg),door.y-8,AMBER,.5+.5*Math.sin(t/10),15);}
 
   // HUD — companion names show up top once recruited
   drawMoon(W/2,60);
@@ -113,6 +116,7 @@ registerMode('topdown',{
   enter(){initTop();},
   draw(t){drawTop(t);},
   key(e){
+    if(exitPrompt&&(e.key==='y'||e.key==='Y'||e.key===' ')){setMode('seam_1_2');return;}
     if(e.key===' ')bolts.push({x:fig.x,y:fig.y,vx:Math.cos(fig.dir)*6,vy:Math.sin(fig.dir)*6,life:120});
     if(e.key==='Escape')setMode('select');
   }

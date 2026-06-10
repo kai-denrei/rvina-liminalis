@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>SEED — cold boot</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
   :root{--phosphor:#ffb24a;--scan:rgba(0,0,0,.30);}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
-  body{background:#000;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden;}
+  body{background:#000;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;height:100dvh;overflow:hidden;touch-action:manipulation;}
   .cabinet{width:min(92vw,860px);aspect-ratio:4/3;background:radial-gradient(120% 120% at 50% 30%,#1a140d 0%,#0c0907 60%,#050403 100%);border-radius:22px;padding:clamp(14px,3vw,34px);position:relative;box-shadow:inset 0 2px 0 rgba(255,200,120,.06),inset 0 -8px 24px rgba(0,0,0,.8),0 40px 80px rgba(0,0,0,.7);}
   .screen{position:relative;width:100%;height:100%;border-radius:50% / 8%;overflow:hidden;background:#080604;box-shadow:inset 0 0 60px rgba(0,0,0,.95),inset 0 0 14px rgba(255,178,74,.05);}
   canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -23,14 +23,41 @@
   .power{appearance:none;border:none;cursor:pointer;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff7a3a,#7a1d08);box-shadow:0 0 8px rgba(255,90,40,.7),inset 0 -2px 3px rgba(0,0,0,.6);}
   .power:focus-visible{outline:2px solid var(--phosphor);outline-offset:3px}
   .power.dead{background:radial-gradient(circle at 35% 30%,#3a2a1a,#120c08);box-shadow:none}
+  /* ---- control deck: cabinet hardware (markup injected by touch.js on coarse pointers only) ---- */
+  .deck{display:none;align-items:center;justify-content:space-between;gap:clamp(14px,5vw,40px);margin-top:2px;padding:clamp(10px,3vw,18px) clamp(16px,5vw,40px);border-radius:14px;background:radial-gradient(140% 150% at 50% 0%,#171108 0%,#0b0806 55%,#050403 100%);box-shadow:inset 0 2px 0 rgba(255,200,120,.05),inset 0 -6px 16px rgba(0,0,0,.75),0 2px 6px rgba(0,0,0,.5);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+  .deck button{appearance:none;border:none;padding:0;cursor:pointer;font-family:inherit;touch-action:none;user-select:none;-webkit-user-select:none;}
+  .dpad{--dk:clamp(42px,13vw,52px);display:grid;grid-template-columns:repeat(3,var(--dk));grid-template-rows:repeat(3,var(--dk));gap:7px;}
+  .dk{width:var(--dk,48px);height:var(--dk,48px);border-radius:12px;color:#7a5a30;font-size:15px;line-height:1;background:radial-gradient(circle at 35% 28%,#2a1f12,#0e0a07 78%);box-shadow:0 4px 8px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,200,120,.10),inset 0 -4px 6px rgba(0,0,0,.7);}
+  .dk.up{grid-area:1/2}.dk.left{grid-area:2/1}.dk.right{grid-area:2/3}.dk.down{grid-area:3/2}
+  .acts{display:flex;align-items:flex-end;gap:clamp(16px,5vw,34px);}
+  .act{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .dk.fire{--dk:clamp(64px,19vw,76px);border-radius:50%;background:radial-gradient(circle at 35% 28%,#b14a1e 0%,#6e2008 55%,#3a0e04 100%);box-shadow:0 5px 12px rgba(0,0,0,.6),0 0 10px rgba(255,90,40,.2),inset 0 2px 2px rgba(255,160,90,.22),inset 0 -6px 10px rgba(0,0,0,.65);}
+  .dk.menu{--dk:34px;border-radius:50%;}
+  .deck .dk:active,.deck .dk.held{box-shadow:inset 0 4px 10px rgba(0,0,0,.85),inset 0 -1px 0 rgba(255,200,120,.04);filter:brightness(1.3);transform:translateY(1px);}
+  .deck .dk.fire:active,.deck .dk.fire.held{box-shadow:inset 0 5px 14px rgba(0,0,0,.8),0 0 14px rgba(255,90,40,.32);filter:brightness(1.15);transform:translateY(1px);}
+  @media (pointer:fine){.deck{display:none}}
+  @media (pointer:coarse){
+    body{flex-direction:column;gap:12px;min-height:100dvh;}
+    .cabinet{aspect-ratio:auto;display:flex;flex-direction:column;gap:clamp(6px,1.5vh,12px);}
+    .screen{width:100%;height:auto;aspect-ratio:4/3;flex:none;}
+    .panel{position:static;flex:none;}
+    .deck{display:flex;}
+  }
   @media (prefers-reduced-motion:reduce){.screen.off canvas{animation:none;opacity:.05}}
 </style>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="cb" content="8a0f5890">
-  <link rel="icon" type="image/svg+xml" href="./public/cb-shapes/10.svg?v=8a0f5890">
-  <script src="./public/cb-badge.js?v=8a0f5890" defer></script>
+  <meta name="cb" content="6c888605">
+  <link rel="icon" type="image/svg+xml" href="./public/cb-shapes/44.svg?v=6c888605">
+  <script src="./public/cb-badge.js?v=6c888605" defer></script>
+  <!-- PWA / iOS — the cabinet ships installable -->
+  <link rel="manifest" href="./manifest.webmanifest?v=6c888605">
+  <meta name="theme-color" content="#080604">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SEED">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon-180.png?v=6c888605">
 </head>
 <body>
   <div class="cabinet">
@@ -40,6 +67,6 @@
     </div>
     <div class="panel"><span class="label">SEED · UNIT 01</span><button class="power" id="power" aria-label="Power"></button></div>
   </div>
-<script type="module" src="./main.js?v=8a0f5890"></script>
+<script type="module" src="./main.js?v=6c888605"></script>
 </body>
 </html>

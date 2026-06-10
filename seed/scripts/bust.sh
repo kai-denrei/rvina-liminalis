@@ -77,6 +77,13 @@ while IFS= read -r f; do
   fi
 done < <(walk_source_files)
 
+# ---------- 2b. Bump the service-worker token (references/service-worker.md) ----------
+if [[ -f sw.js ]]; then
+  sed "${SED_INPLACE[@]}" -E "s/const CB_TOKEN = \"[^\"]+\"/const CB_TOKEN = \"${TOKEN}\"/" sw.js
+  rm -f sw.js.cbbak
+  [[ -z "$QUIET" ]] && echo "  ✓ sw token bumped in sw.js"
+fi
+
 # ---------- 3. Bump the favicon href to a new cell (if visual badge is installed) ----------
 # Leading byte of the token picks the cell (byte mod 64).
 B0=$(printf "%d" 0x${TOKEN:0:2})

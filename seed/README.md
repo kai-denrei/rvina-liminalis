@@ -43,6 +43,26 @@ imports (`main.js` → `engine.js` → `crt.js` → …) are **not** fingerprint
 dev freshness for those comes from `serve.py`'s no-cache headers. For
 production hosting, see the cache-busting skill's `references/server-headers.md`.
 
+## Mobile & PWA
+
+- **Touch deck.** On coarse-pointer devices (phones, tablets) a control deck —
+  d-pad, fire, menu — appears below the screen as part of the cabinet. Desktop
+  pointers never see it.
+- **Install (A2HS).** The game is installable. On iOS there is no install
+  prompt: Share → Add to Home Screen. Android/desktop Chromium offer their
+  native install affordance. Installed, it launches standalone, full black.
+- **Updates.** Power-cycle pattern, no mid-session prompts. A new version found
+  while playing installs silently and applies on the **next launch** —
+  rebooting the machine is the refresh. (If an update was already waiting at
+  launch, it is applied during boot with one invisible reload.)
+- **Offline.** After the first full online visit the game runs entirely
+  offline — shell, modules, and fonts are cached (`seed-<token>` + `seed-fonts`
+  caches; a token bump retires the old version cache on activate).
+- **NOTE — HTTPS or localhost only.** Service workers require a secure context.
+  On `http://localhost:8420` and on the GitHub Pages deploy the SW runs; on
+  `http://kainode.local:8420` (LAN) registration silently skips and the game
+  still runs, just without offline/install support.
+
 ## Module map (bible §7)
 
 | File | Role |
@@ -58,8 +78,11 @@ production hosting, see the cache-busting skill's `references/server-headers.md`
 | `eras/era1_tiles.js` | era 1: `topdown` (Ultima-IV loop) |
 | `seams/seam_0_1.js` | `seam`: console → tiles (year tick 1979→1985, grid bleed, figure resolve) |
 | `serve.py` | dev server, no-cache headers, port 8420 |
-| `scripts/bust.sh` | cache-bust token runner |
+| `scripts/bust.sh` | cache-bust token runner (also rewrites the SW token) |
 | `public/` | cb-badge.js + cb-shapes/ (visual build receipt assets) |
+| `pwa.js` | SW registration + power-cycle update flow (imported last by `main.js`) |
+| `sw.js` | service worker: token-keyed `seed-<token>` cache + persistent `seed-fonts` |
+| `manifest.webmanifest` / `icons/` | install metadata + amber-dot icons (era zero) |
 
 ## Controls
 
