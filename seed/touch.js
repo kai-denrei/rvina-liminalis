@@ -19,7 +19,7 @@ if(matchMedia('(pointer: coarse)').matches){
     '</div>'+
     '<div class="acts">'+
       '<div class="act"><button type="button" class="dk fire" data-key=" " aria-label="Fire"></button><span class="label">FIRE</span></div>'+
-      '<div class="act"><button type="button" class="dk menu" data-key="i" data-norepeat="1" aria-label="Inventory"></button><span class="label">INV</span></div>'+
+      '<div class="act"><button type="button" class="dk menu" data-key="i" data-norepeat="1" aria-label="Inventory" style="font-size:18px;color:#ffb24a;font-family:inherit">i</button><span class="label" style="font-size:11px">PACK</span></div>'+
       '<div class="act"><button type="button" class="dk menu" data-key="Escape" aria-label="Menu"></button><span class="label">MENU</span></div>'+
     '</div>';
   deck.addEventListener('contextmenu',e=>e.preventDefault());
@@ -45,4 +45,12 @@ if(matchMedia('(pointer: coarse)').matches){
     btn.addEventListener('pointercancel',release);
     btn.addEventListener('pointerleave',release);
   });
+
+  // In the dungeon, ◀ ▶ TURN rather than strafe — show what they do (Gerald, 2026-06-11)
+  const L=deck.querySelector('.dk.left'),R=deck.querySelector('.dk.right');
+  setInterval(()=>{
+    const d=window.__seed&&window.__seed.getMode&&window.__seed.getMode()==='dungeon';
+    if(L.textContent!==(d?'↺':'◀'))L.textContent=d?'↺':'◀';
+    if(R.textContent!==(d?'↻':'▶'))R.textContent=d?'↻':'▶';
+  },250);
 }
