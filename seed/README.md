@@ -66,6 +66,16 @@ fresh graph requests it under a URL the CDN has never seen.
   while playing installs silently and applies on the **next launch** —
   rebooting the machine is the refresh. (If an update was already waiting at
   launch, it is applied during boot with one invisible reload.)
+  - **Auto-detect on open.** Launching or re-foregrounding the installed app
+    checks for a new build (`reg.update()` on visibility resume + bfcache
+    `pageshow`); if one exists and you are still on the boot/select screens it
+    power-cycles invisibly — mid-game it only installs and waits.
+  - **Manual check.** Tapping the build badge (bottom-right shapes + token)
+    checks right now: `checking… → up to date · <token>` or
+    `new build — restarting` followed by an immediate power-cycle (explicit
+    consent, so it applies even mid-game). Where the service worker is
+    unavailable (plain http over LAN) the tap falls back to fetching the
+    served page fresh and comparing its `meta cb` token.
 - **Offline.** After the first full online visit the game runs entirely
   offline — shell, modules, and fonts are cached (`seed-<token>` + `seed-fonts`
   caches; a token bump retires the old version cache on activate).

@@ -3,7 +3,7 @@
 // primary pointer is coarse, so desktop layout stays pixel-identical. Input flows through
 // engine's virtual-key API (pressKey/repeatKey/releaseKey) — modes see exactly the same
 // keys{} map and key(e) events as a physical keyboard. No mode/era code is touched.
-import {pressKey,repeatKey,releaseKey} from './engine.js?v=244d1674';
+import {pressKey,repeatKey,releaseKey} from './engine.js?v=8b00269a';
 
 const REPEAT_MS=90; // ~OS key-repeat cadence — ballistic aim and menu nav rely on repeated keydown
 

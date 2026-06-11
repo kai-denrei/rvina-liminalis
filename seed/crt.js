@@ -3,7 +3,7 @@
 // is sacred — it demotes (boot screen → corner log → dialogue → subtitle) but never changes
 // engine. Never re-implement text per era; never set ctx.font or call fillText outside this file.
 // Helper bodies are byte-faithful ports of the seed_console2.html PoC.
-import {AMBER} from './palette.js?v=244d1674';
+import {AMBER} from './palette.js?v=8b00269a';
 
 export const W=800,H=600;
 export let ctx;

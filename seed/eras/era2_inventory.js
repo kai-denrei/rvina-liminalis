@@ -9,9 +9,9 @@
 // command-line is sacred, bible §7); shapes (frame, pips, the doll) are ctx strokes.
 // Amber family only — no TEAL here; the colour of elsewhere stays in the stone and
 // the surface light. The hero is deliberately unnamed: '———'.
-import {ctx,txt,cw,drawMini,W,H} from '../crt.js?v=244d1674';
-import {logLine,party,flags,FLAG,xp} from '../state.js?v=244d1674';
-import {AMBER,DIM,DEEP} from '../palette.js?v=244d1674';
+import {ctx,txt,cw,drawMini,W,H} from '../crt.js?v=8b00269a';
+import {logLine,party,flags,FLAG,xp} from '../state.js?v=8b00269a';
+import {AMBER,DIM,DEEP} from '../palette.js?v=8b00269a';
 
 /* ---------- constants ---------- */
 const CAP=18;                 // kg — roomy at the start (12 was punitive — Gerald, 2026-06-11); the choosing-what-to-keep beat re-stages with heavier loot later

@@ -5,10 +5,10 @@
 // scales up past the camera and fades, darkness closes from the edges. The year ticks
 // 1985→1987 into state.year. The corner command-line persists throughout — it is sacred.
 // Ends in mode 'dungeon'; the next stage exists now.
-import {registerMode,setMode,reduced} from '../engine.js?v=244d1674';
-import {ctx,clear,txt,drawFigure,W,H} from '../crt.js?v=244d1674';
-import {state,logLine,getLog} from '../state.js?v=244d1674';
-import {DIM,DEEP} from '../palette.js?v=244d1674';
+import {registerMode,setMode,reduced} from '../engine.js?v=8b00269a';
+import {ctx,clear,txt,drawFigure,W,H} from '../crt.js?v=8b00269a';
+import {state,logLine,getLog} from '../state.js?v=8b00269a';
+import {DIM,DEEP} from '../palette.js?v=8b00269a';
 
 let st=0,LEN=260,darkLogged=false;
 

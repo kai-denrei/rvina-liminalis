@@ -85,14 +85,9 @@
   hexEl.style.cssText = "margin-left:6px;color:#bbb";
   badge.appendChild(hexEl);
 
-  // Click to copy the token.
+  // Click behavior is owned by pwa.js (tap = check for a new build); the old
+  // copy-to-clipboard handler is retired so a tap means exactly one thing.
   badge.style.cursor = "pointer";
-  badge.title = "click to copy cache-bust token";
-  badge.addEventListener("click", () => {
-    navigator.clipboard?.writeText(hex);
-    hexEl.style.color = "#5dcaa5";
-    setTimeout(() => { hexEl.style.color = "#bbb"; }, 600);
-  });
 
   // Mount once DOM is ready.
   if (document.body) {

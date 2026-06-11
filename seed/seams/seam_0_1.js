@@ -4,10 +4,10 @@
 // pushed through state.logLine as they appear so they persist into era 1.
 // The FINAL line '> is there an outside?' renders in TEAL — the second colour's first and only
 // V1 appearance (PM/story decision; do not use TEAL anywhere else).
-import {registerMode,setMode,reduced} from '../engine.js?v=244d1674';
-import {ctx,clear,txt,drawFigure,W,H} from '../crt.js?v=244d1674';
-import {state,logLine} from '../state.js?v=244d1674';
-import {DIM,DEEP,TEAL} from '../palette.js?v=244d1674';
+import {registerMode,setMode,reduced} from '../engine.js?v=8b00269a';
+import {ctx,clear,txt,drawFigure,W,H} from '../crt.js?v=8b00269a';
+import {state,logLine} from '../state.js?v=8b00269a';
+import {DIM,DEEP,TEAL} from '../palette.js?v=8b00269a';
 
 let seamT=0,pushed=0;
 const SEAM_LEN=reduced?20:200;

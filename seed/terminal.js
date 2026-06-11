@@ -4,7 +4,7 @@
 // deck — DOM injected here, styles in index.html's <style>. It is an external
 // MAGNIFIER of the corner command-line; the canvas log (state.logLine/getLog via
 // crt.txt) is sacred and stays exactly as it is. No mode/era code is touched.
-import {getLog,onLog} from './state.js?v=244d1674';
+import {getLog,onLog} from './state.js?v=8b00269a';
 
 const MAX=300;                 // scrollback depth (the canvas keeps its 5)
 const FS_KEY='seed.term.fs';

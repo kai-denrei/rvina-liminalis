@@ -11,12 +11,12 @@
 // ENEMIES[0] sits on the only corridor to EXIT; two lesser beasts live deeper in.
 // All are live (Threat phase): movement collision and arrow hits both route through
 // the single point enemyAt()/foeAt().
-import {registerMode,setMode,reduced} from '../engine.js?v=244d1674';
-import {ctx,clear,txt,cw,blk,W,H} from '../crt.js?v=244d1674';
-import {logLine,getLog,party,flags,FLAG,xp,XP_SOURCE} from '../state.js?v=244d1674';
-import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js?v=244d1674';
-import {GRID,ENTRY,ITEMS,ENEMIES,EXIT,DECOR} from './era2_map.js?v=244d1674';
-import * as inv from './era2_inventory.js?v=244d1674';
+import {registerMode,setMode,reduced} from '../engine.js?v=8b00269a';
+import {ctx,clear,txt,cw,blk,W,H} from '../crt.js?v=8b00269a';
+import {logLine,getLog,party,flags,FLAG,xp,XP_SOURCE} from '../state.js?v=8b00269a';
+import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js?v=8b00269a';
+import {GRID,ENTRY,ITEMS,ENEMIES,EXIT,DECOR} from './era2_map.js?v=8b00269a';
+import * as inv from './era2_inventory.js?v=8b00269a';
 
 /* ---------- grid math ---------- */
 const CX=W/2,CY=H/2;

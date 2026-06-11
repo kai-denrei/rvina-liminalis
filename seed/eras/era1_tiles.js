@@ -22,13 +22,13 @@
 // and the Tallest Tree (the world learning a new colour). NO minimap, no waypoints,
 // no quest arrows: memory is the mechanic; the absence is the design.
 // The corner command-line is sacred (state.logLine/getLog). Scanlines/CRT untouched.
-import {registerMode,setMode,keys,reduced} from '../engine.js?v=244d1674';
-import {ctx,clear,txt,cw,blk,drawFigure,drawMini,W,H} from '../crt.js?v=244d1674';
+import {registerMode,setMode,keys,reduced} from '../engine.js?v=8b00269a';
+import {ctx,clear,txt,cw,blk,drawFigure,drawMini,W,H} from '../crt.js?v=8b00269a';
 // recruitCardea + descendThroughPortal are imported NOW so the quest phase only fills
 // function bodies — it must not need to touch this import line.
-import {state,flags,FLAG,xp,XP_SOURCE,xpOnLore,party,recruitCardea,cardeaRecall,verb,CAP,descendThroughPortal,logLine,getLog} from '../state.js?v=244d1674';
-import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js?v=244d1674';
-import {TILE,COLS,ROWS,GRID,SITES,FOES,ROUGH} from './era1_world.js?v=244d1674';
+import {state,flags,FLAG,xp,XP_SOURCE,xpOnLore,party,recruitCardea,cardeaRecall,verb,CAP,descendThroughPortal,logLine,getLog} from '../state.js?v=8b00269a';
+import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js?v=8b00269a';
+import {TILE,COLS,ROWS,GRID,SITES,FOES,ROUGH} from './era1_world.js?v=8b00269a';
 
 /* ================= boot-once spine wiring (STATE_MODULE.md §1) ================= */
 verb.enable(CAP.MOVE,CAP.HOSTILE_AI,CAP.QUEST,CAP.PARTY,CAP.RIDDLE); // era-1 verbs accrete
