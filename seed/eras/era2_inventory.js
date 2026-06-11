@@ -9,9 +9,9 @@
 // command-line is sacred, bible §7); shapes (frame, pips, the doll) are ctx strokes.
 // Amber family only — no TEAL here; the colour of elsewhere stays in the stone and
 // the surface light. The hero is deliberately unnamed: '———'.
-import {ctx,txt,cw,drawMini,W,H} from '../crt.js?v=0b3251d9';
-import {logLine,party,flags,FLAG,xp} from '../state.js?v=0b3251d9';
-import {AMBER,DIM,DEEP} from '../palette.js?v=0b3251d9';
+import {ctx,txt,cw,drawMini,W,H} from '../crt.js?v=244d1674';
+import {logLine,party,flags,FLAG,xp} from '../state.js?v=244d1674';
+import {AMBER,DIM,DEEP} from '../palette.js?v=244d1674';
 
 /* ---------- constants ---------- */
 const CAP=18;                 // kg — roomy at the start (12 was punitive — Gerald, 2026-06-11); the choosing-what-to-keep beat re-stages with heavier loot later
@@ -38,7 +38,10 @@ let open=false;        // panel visibility
 let darkLogged=false;  // '> the dark closes in.' fires once per plunge into dark
 
 export function initInventory(){
-  hands=null;quiver=0;lit={level:1};spares=[];pack=[];open=false;darkLogged=false;
+  // continuity (Gerald, 2026-06-11): she carried the bow through the portal — era 1's
+  // weapon arrives in hand, with five arrows from the old world. Weights stay honest:
+  // bow 2kg + 5×0.1kg arrows + the lit torch = 3.5kg against the 18kg cap.
+  hands={id:'bow',kg:2};quiver=5;lit={level:1};spares=[];pack=[];open=false;darkLogged=false;
 }
 
 /* ---------- weight ---------- */
@@ -91,6 +94,9 @@ export function pickup(item){
 export function hasBow(){return !!(hands&&hands.id==='bow');}
 export function arrowCount(){return quiver;}
 export function spendArrow(){if(quiver<1)return false;quiver--;return true;}
+
+/* ---------- the sword (close work; it rides in the pack) ---------- */
+export function hasSword(){return pack.some(p=>p.id==='sword')||!!(hands&&hands.id==='sword');}
 
 /* ---------- panel toggle ---------- */
 export function togglePanel(){open=!open;}
@@ -176,7 +182,7 @@ export function drawPanel(t){
   // HANDS — the slot Dungeon Master invented a genre around
   txt('HANDS',lx,y+5,DEEP,.85,11);
   if(hands){
-    txt('BOW',vx,y+3,AMBER,.95,13);
+    txt(hands.id.toUpperCase(),vx,y+3,AMBER,.95,13);
     txt(f1(hands.kg)+' KG',kx-cw(f1(hands.kg)+' KG',12),y+4,DIM,.8,12);
     rows.push({y,h:24,act:dropHands});
   }else txt('———',vx,y+3,DIM,.5,13);

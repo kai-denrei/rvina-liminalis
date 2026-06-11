@@ -1,7 +1,7 @@
 // engine.js — rAF loop, mode registry, input bus, reduced-motion (bible §7).
 // Owns the DOM and the clock. Imports crt only (never mode modules); modes self-register
 // via registerMode() on import, and main.js calls start() — keeps the import graph acyclic.
-import * as crt from './crt.js?v=0b3251d9';
+import * as crt from './crt.js?v=244d1674';
 
 export const keys={};
 export const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;

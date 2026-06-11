@@ -11,12 +11,12 @@
 // ENEMIES[0] sits on the only corridor to EXIT; two lesser beasts live deeper in.
 // All are live (Threat phase): movement collision and arrow hits both route through
 // the single point enemyAt()/foeAt().
-import {registerMode,setMode,reduced} from '../engine.js?v=0b3251d9';
-import {ctx,clear,txt,cw,blk,W,H} from '../crt.js?v=0b3251d9';
-import {logLine,getLog,party,flags,FLAG,xp,XP_SOURCE} from '../state.js?v=0b3251d9';
-import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js?v=0b3251d9';
-import {GRID,ENTRY,ITEMS,ENEMIES,EXIT} from './era2_map.js?v=0b3251d9';
-import * as inv from './era2_inventory.js?v=0b3251d9';
+import {registerMode,setMode,reduced} from '../engine.js?v=244d1674';
+import {ctx,clear,txt,cw,blk,W,H} from '../crt.js?v=244d1674';
+import {logLine,getLog,party,flags,FLAG,xp,XP_SOURCE} from '../state.js?v=244d1674';
+import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js?v=244d1674';
+import {GRID,ENTRY,ITEMS,ENEMIES,EXIT,DECOR} from './era2_map.js?v=244d1674';
+import * as inv from './era2_inventory.js?v=244d1674';
 
 /* ---------- grid math ---------- */
 const CX=W/2,CY=H/2;
@@ -34,7 +34,8 @@ const wallAt=(x,y)=>x<0||y<0||x>15||y>15||GRID[y][x]==='#';
    the big one stirs within ~6 cells, lesser beasts within ~4, so deep rooms
    stay calm until entered. None enters the player's cell (or another foe's).
    Adjacent, it strikes on a ~60-frame tick (hp-1, brief amber wash,
-   '> it strikes.'). Arrows: '> it recoils.'; at 0 hp '> it comes apart.',
+   '> it strikes.'). Hits — arrow OR sword swing, both through hurtFoe():
+   '> it recoils.'; at 0 hp '> it comes apart.',
    FELL_FOE xp (the log already speaks; SURVIVE_FIGHT once for the big one)
    and the cell clears permanently for the session. The player at 0 hp wakes
    at ENTRY, hp 3, pack intact — the dungeon does not give the arrows back.
@@ -71,7 +72,7 @@ function tickFoes(){
     }else f.atkT=Math.min(f.atkT,30);       // half a beat of warning when it closes in
   }
 }
-function hurtFoe(f){ // an arrow found it (wired from updateArrows through foeAt)
+function hurtFoe(f){ // a hit landed — arrow (updateArrows via foeAt) or sword swing (fire)
   f.hp--;
   if(f.hp>0){f.hurtT=8;logLine('> it recoils.');return;}
   foes.splice(foes.indexOf(f),1);          // the cell is yours — for good, this session
@@ -80,7 +81,7 @@ function hurtFoe(f){ // an arrow found it (wired from updateArrows through foeAt
   if(f.big)xp.award(XP_SOURCE.SURVIVE_FIGHT,{once:'era2_big_foe'});
 }
 function respawn(){ // death is a relocation, not a reset: the pack persists, spent arrows stay spent
-  pos={x:ENTRY.x,y:ENTRY.y};facing=ENTRY.facing;hp=3;cool=COOL;arrows=[];
+  pos={x:ENTRY.x,y:ENTRY.y};facing=ENTRY.facing;hp=3;cool=COOL;arrows=[];swingT=0;swordCool=0;
   logLine('> you wake at the bottom of the stairs.');
 }
 
@@ -140,6 +141,39 @@ function ceilTex(seed){ // rough slab ceiling, darker than the rest
 }
 const frontT=brickTex(0xA5EED,0),sideT=brickTex(0xC0FFEE,0.16),flagT=flagTex(0xF1005),ceilT=ceilTex(0x5EED);
 
+/* ---------- Gerald's sprites (sanctioned 2026-06-11: the art is law) ----------
+   64x64 RGBA pixel art that ships in its OWN colors — gold chest/crown, grey bone,
+   orange flame — never recolored, never smoothed. Preloaded once at module init;
+   runtime cache-bust via the cb meta token (the SW caches them under that token).
+   Every blit forces imageSmoothingEnabled=false and RESTORES the prior value after
+   (wall textures may rely on the ambient setting). No new animation is introduced:
+   the candle's flame is baked into the art, so reduced-motion needs no special case. */
+const CB=(document.querySelector('meta[name="cb"]')||{}).content||'';
+function spr(path){const im=new Image();im.src='./public/sprites/era2/'+path+'?v='+CB;return im;}
+// scale = drawn frame width as a fraction of the corridor width at that depth (W*pf):
+// near-slot furniture reads as FURNITURE, ~half the corridor wide (Gerald: much bigger).
+const DECOR_DEF={
+  skeleton:           {img:spr('Gore03GroundSkeleton.png'),scale:0.72}, // bones spread wide where he fell
+  chest:              {img:spr('TreasureChest.png'),       scale:0.42},
+  candleTable:        {img:spr('TableCandle.png'),         scale:0.50},
+  'kitchen:Barrel01' :{img:spr('kitchen/Barrel01.png'),    scale:0.38},
+  'kitchen:Kitchen01':{img:spr('kitchen/Kitchen01.png'),   scale:0.46,ceil:true}, // hung from the ceiling
+  'kitchen:Kitchen02':{img:spr('kitchen/Kitchen02.png'),   scale:0.40,ceil:true},
+  'kitchen:Kitchen03':{img:spr('kitchen/Kitchen03.png'),   scale:0.52},           // the hearth
+  'kitchen:Tabble01' :{img:spr('kitchen/Tabble01.png'),    scale:0.50},
+  'kitchen:Table02'  :{img:spr('kitchen/Table02.png'),     scale:0.50},
+  'kitchen:Tub01'    :{img:spr('kitchen/Tub01.png'),       scale:0.40},
+  'kitchen:Tub02'    :{img:spr('kitchen/Tub02.png'),       scale:0.40},
+  'kitchen:Water01'  :{img:spr('kitchen/Water01.png'),     scale:0.45},
+};
+const crownImg=spr('Crown.png');
+function blit(img,x,y,w,h,a){ // the one drawImage gate: nearest-neighbor in, prior smoothing out
+  if(!img.complete||!img.naturalWidth)return;       // still loading — it appears next frame
+  const sm=ctx.imageSmoothingEnabled;ctx.imageSmoothingEnabled=false;
+  ctx.globalAlpha=a;ctx.drawImage(img,x,y,w,h);ctx.globalAlpha=1;
+  ctx.imageSmoothingEnabled=sm;
+}
+
 /* ---------- pre-scaled depth slots (init-only) ---------- */
 // front walls at boundaries 1..4 — one canvas each, blitted (and laterally shifted) per frame
 const frontC=[null];
@@ -176,6 +210,12 @@ for(let z=0;z<4;z++){
 const COOL=9;                       // ~9-frame step/turn cooldown (DM cadence)
 let pos={x:ENTRY.x,y:ENTRY.y},facing=ENTRY.facing,hp=3;
 let cool=0,floorItems=[],arrows=[],started=false,T=0;
+// decor instances (per session — chests carry their opened flag); the candle's cell
+// is cached for the 1-cell light source; candleSeen gates its once-line.
+let decor=[],candleCell=null,candleSeen=false;
+// the sword (close work): swingT counts down the 3-frame arc, swordCool the ~25-frame
+// rhythm between swings; swordSeen gates the once-line at the dead man by the stairs.
+let swingT=0,swordCool=0,swordSeen=false;
 const HINT='↑↓ move · ←→ turn · space fire · i pack';
 // Iolo waits two cells in from the bottom of the stairs; reaching his cell recruits him.
 // He follows in the header, not the corridor — the era-2 party occupies one cell, DM-style.
@@ -189,6 +229,10 @@ let ioloWaiting=false;
 function bright(d){
   let L=inv.lightLevel();
   if(!reduced)L*=1+0.05*Math.sin(T*0.31)+0.03*Math.sin(T*0.113);
+  // THE CANDLE IS ALWAYS LIT (Gerald 2026-06-11): standing on or beside its cell, the
+  // local view stays readable even with the torch burnt out — a 1-cell light source.
+  // The floor is applied AFTER the torch sway: wax light is steady, it does not gutter.
+  if(candleCell&&Math.abs(pos.x-candleCell.x)+Math.abs(pos.y-candleCell.y)<=1)L=Math.max(L,0.55);
   return Math.max(0,Math.min(1,L*(1-d*0.20)));
 }
 
@@ -211,12 +255,38 @@ function tryStep(s){
   }
 }
 function fire(){
+  // SPACE priority, stated order (attack only ever targets LIVING foes):
+  //   1. a living foe directly ahead + the sword carried -> SWING (1 hp, ~25-frame
+  //      cooldown; the foe can still counter — close work is brave work);
+  //   2. NO living foe ahead and an unopened chest ahead or underfoot -> OPEN it
+  //      (once each; the chest stays, the loot takes the normal pickup road);
+  //   3. otherwise the bow as ever. '> your hands are empty.' remains the voice of
+  //      a dropped bow.
+  const F=FV[facing],ax=pos.x+F[0],ay=pos.y+F[1],ahead=foeAt(ax,ay);
+  if(ahead&&inv.hasSword()){
+    if(swordCool>0)return;
+    swordCool=25;swingT=reduced?2:9;          // 3 chunky frames of arc; reduced -> one flash
+    hurtFoe(ahead);
+    return;
+  }
+  if(!ahead){ // nothing alive in the way — a chest may be opened
+    const ch=decor.find(dc=>dc.sprite==='chest'&&!dc.opened&&
+      ((dc.x===ax&&dc.y===ay)||(dc.x===pos.x&&dc.y===pos.y)));
+    if(ch){
+      ch.opened=true;
+      logLine('> the chest creaks open.');
+      const loot={...ch.loot,x:ch.x,y:ch.y};
+      if(inv.pickup(loot))logLine('> taken: '+loot.id+'.'); // straight to the pack — the pickup idiom
+      else floorItems.push(loot);                           // too heavy: it waits in the cell, pickable later
+      return;
+    }
+  }
   if(inv.hasBow()&&inv.spendArrow())arrows.push({x:pos.x,y:pos.y,fx:FV[facing][0],fy:FV[facing][1],sub:0});
   else logLine(inv.hasBow()?'> the quiver is empty.':'> your hands are empty.');
 }
 function updateArrows(){
   for(const a of arrows){
-    a.sub+=1/6;                      // ~6 frames per cell
+    a.sub+=reduced?3:1/6;            // ~6 frames per cell; reduced motion resolves in 1-2 frames
     while(a.sub>=1){
       a.sub-=1;a.x+=a.fx;a.y+=a.fy;
       if(wallAt(a.x,a.y)){a.dead=true;break;}     // lost to the wall
@@ -267,7 +337,18 @@ function drawSides(z){
 function collectSprites(){
   const F=FV[facing],R=RV[facing],out=[];
   const rel=(x,y)=>({d:(x-pos.x)*F[0]+(y-pos.y)*F[1],lat:(x-pos.x)*R[0]+(y-pos.y)*R[1]});
-  for(const it of floorItems){const p=rel(it.x,it.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:it.id});}
+  // decor first: same-cell items (the dead man's sword) draw OVER their dressing —
+  // the within-slot sort is stable, so insertion order breaks the d-ties
+  for(const dc of decor){const p=rel(dc.x,dc.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1){
+    out.push({d:p.d,lat:p.lat,kind:'decor',dec:dc});
+    if(dc.sprite==='candleTable'&&!candleSeen&&inv.lightLevel()<=0.08){
+      candleSeen=true;logLine('> the candle does not ask if you have light.'); // first sight torchless, once
+    }
+  }}
+  for(const it of floorItems){const p=rel(it.x,it.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1){
+    out.push({d:p.d,lat:p.lat,kind:it.id});
+    if(it.id==='sword'&&!swordSeen){swordSeen=true;logLine('> a dead man holds a sword.');} // first sight, once
+  }}
   const e=rel(EXIT.x,EXIT.y);if(e.d>-0.3&&e.d<4.3&&Math.abs(e.lat)<2.1)out.push({d:e.d,lat:e.lat,kind:'exit'});
   if(ioloWaiting){const p=rel(IOLO_CELL.x,IOLO_CELL.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:'iolo'});}
   for(const a of arrows){const p=rel(a.x+a.fx*a.sub,a.y+a.fy*a.sub);if(p.d>0.15&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:'arrow'});}
@@ -333,50 +414,98 @@ function drawIolo(s){ // a standing figure with a lute, patient in the dark
   ctx.beginPath();ctx.moveTo(cx+16*f,fy-25*f);ctx.lineTo(cx+22*f,fy-36*f);ctx.stroke(); // its neck
   ctx.globalAlpha=1;
 }
+function drawDecor(s){ // Gerald's sprites: own colors, nearest-neighbor, BIG —
+  // a near-slot table spans ~half the corridor width and reads as furniture, not an icon
+  const def=DECOR_DEF[s.dec.sprite];if(!def)return;
+  const d=Math.max(s.d,0.42),f=pf(d);
+  const S=W*f*def.scale,cx=CX+s.lat*W*f;
+  const y=def.ceil?CY-CY*f+2:CY+CY*f-2-S; // hung from the ceiling line, or stood on the floor line
+  // the candle table is ALWAYS lit: full brightness, torch or no torch (Gerald)
+  const a=s.dec.sprite==='candleTable'?1:Math.min(1,bright(d)*1.5+0.06);
+  blit(def.img,cx-S/2,y,S,S,a);
+}
 function drawSprite(s){
   if(s.kind==='exit'){drawDoor(s);return;}
   if(s.kind==='foe'){drawFoe(s);return;}
   if(s.kind==='iolo'){drawIolo(s);return;}
+  if(s.kind==='decor'){drawDecor(s);return;}
   const d=Math.max(s.d,0.42),f=pf(d),b=bright(d);
   const cx=CX+s.lat*W*f,fy=CY+CY*f-2;
-  if(s.kind==='arrow'){blk(cx-3*f,CY+36*f,WHITE,Math.min(1,b+0.35),Math.max(2,Math.round(7*f)));return;}
-  const a=Math.min(1,b*1.5+0.06);
-  ctx.globalAlpha=a;ctx.lineWidth=Math.max(1,2*f);
+  if(s.kind==='arrow'){ // in flight: a chunky 8-bit dart — WHITE head, amber shaft, dim fletch
+    const sz=Math.max(4,Math.round(20*f)),sh=Math.max(3,Math.round(sz*0.6)),ay=CY+28*f;
+    blk(cx-sz/2-2,ay-2,'#080604',0.75,sz+4);              // dark backing — it reads against lit beasts
+    blk(cx-sz/2,ay,WHITE,Math.min(1,b+0.5),sz);
+    blk(cx-sh/2,ay+sz,AMBER,Math.min(1,b+0.35),sh);
+    blk(cx-sh/2,ay+sz+sh,DIM,Math.min(1,b+0.25),sh);
+    return;
+  }
+  // floor items read ~2x the old size (Gerald: 'all the objects must be much bigger') —
+  // u doubles every extent; cx/fy (projection) untouched, so depth sorting stays true.
+  const u=f*2,a=Math.min(1,b*1.5+0.06);
+  ctx.globalAlpha=a;ctx.lineWidth=Math.max(1,2*u);
   switch(s.kind){
     case 'bow':
       ctx.strokeStyle=AMBER;
-      ctx.beginPath();ctx.arc(cx-2*f,fy-12*f,11*f,-1.25,1.25);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(cx+1.5*f,fy-22*f);ctx.lineTo(cx+1.5*f,fy-2*f);ctx.stroke();
+      ctx.beginPath();ctx.arc(cx-2*u,fy-12*u,11*u,-1.25,1.25);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx+1.5*u,fy-22*u);ctx.lineTo(cx+1.5*u,fy-2*u);ctx.stroke();
+      break;
+    case 'sword': // fallen aslant where its owner fell — the blade still catches the torch
+      ctx.strokeStyle=AMBER;
+      ctx.beginPath();ctx.moveTo(cx-13*u,fy-2*u);ctx.lineTo(cx+11*u,fy-20*u);ctx.stroke();
+      ctx.strokeStyle=DIM;
+      ctx.beginPath();ctx.moveTo(cx-12*u,fy-11*u);ctx.lineTo(cx-5*u,fy-1*u);ctx.stroke();   // crossguard
+      ctx.fillStyle=DIM;ctx.fillRect(cx-18*u,fy-3*u,5*u,4*u);                               // hilt
+      ctx.fillStyle=WHITE;ctx.fillRect(cx+8*u,fy-19*u,Math.max(1,2*u),Math.max(1,2*u));     // the glint
       break;
     case 'arrows':
       ctx.strokeStyle=DIM;
       for(let i=-1;i<=1;i++){
-        ctx.beginPath();ctx.moveTo(cx+i*3.4*f,fy);ctx.lineTo(cx+i*3.4*f+2.5*f,fy-15*f);ctx.stroke();
-        ctx.fillStyle=WHITE;ctx.fillRect(cx+i*3.4*f+1.5*f,fy-17*f,Math.max(1,2.6*f),Math.max(1,2.6*f));
+        ctx.beginPath();ctx.moveTo(cx+i*3.4*u,fy);ctx.lineTo(cx+i*3.4*u+2.5*u,fy-15*u);ctx.stroke();
+        ctx.fillStyle=WHITE;ctx.fillRect(cx+i*3.4*u+1.5*u,fy-17*u,Math.max(1,2.6*u),Math.max(1,2.6*u));
       }
       break;
     case 'torch':
       ctx.strokeStyle=DIM;
-      ctx.beginPath();ctx.moveTo(cx,fy);ctx.lineTo(cx+3*f,fy-14*f);ctx.stroke();
-      ctx.fillStyle=AMBER;ctx.fillRect(cx+1.5*f,fy-19*f,5*f,5*f);
-      ctx.fillStyle=WHITE;ctx.fillRect(cx+3*f,fy-17.5*f,2*f,2*f);
+      ctx.beginPath();ctx.moveTo(cx,fy);ctx.lineTo(cx+3*u,fy-14*u);ctx.stroke();
+      ctx.fillStyle=AMBER;ctx.fillRect(cx+1.5*u,fy-19*u,5*u,5*u);
+      ctx.fillStyle=WHITE;ctx.fillRect(cx+3*u,fy-17.5*u,2*u,2*u);
       break;
+    case 'crown':{ // Gerald's gold, as shipped — a Crown.png billboard, never the procedural road
+      const S=W*f*0.30;
+      blit(crownImg,cx-S/2,fy-S,S,S,a);
+      break;}
     case 'idol':
       ctx.fillStyle=DIM;
-      ctx.fillRect(cx-6*f,fy-13*f,12*f,13*f);
-      ctx.fillRect(cx-3.5*f,fy-19*f,7*f,7*f);
+      ctx.fillRect(cx-6*u,fy-13*u,12*u,13*u);
+      ctx.fillRect(cx-3.5*u,fy-19*u,7*u,7*u);
       ctx.fillStyle='#080604'; // hollow eyes — amber eyes belong to the beast alone
-      ctx.fillRect(cx-2*f,fy-17*f,1.6*f,1.6*f);ctx.fillRect(cx+0.8*f,fy-17*f,1.6*f,1.6*f);
+      ctx.fillRect(cx-2*u,fy-17*u,1.6*u,1.6*u);ctx.fillRect(cx+0.8*u,fy-17*u,1.6*u,1.6*u);
       break;
     case 'mirror':
-      ctx.fillStyle='#0e0b08';ctx.fillRect(cx-6*f,fy-20*f,12*f,20*f);
-      ctx.strokeStyle=DIM;ctx.strokeRect(cx-6*f,fy-20*f,12*f,20*f);
-      ctx.strokeStyle=WHITE;ctx.beginPath();ctx.moveTo(cx-3*f,fy-4*f);ctx.lineTo(cx+3*f,fy-16*f);ctx.stroke();
+      ctx.fillStyle='#0e0b08';ctx.fillRect(cx-6*u,fy-20*u,12*u,20*u);
+      ctx.strokeStyle=DIM;ctx.strokeRect(cx-6*u,fy-20*u,12*u,20*u);
+      ctx.strokeStyle=WHITE;ctx.beginPath();ctx.moveTo(cx-3*u,fy-4*u);ctx.lineTo(cx+3*u,fy-16*u);ctx.stroke();
       break;
-    default: // a dropped thing with no portrait — a small dim bundle
-      ctx.fillStyle=DIM;ctx.fillRect(cx-4*f,fy-7*f,8*f,7*f);
+    default: // a dropped thing with no portrait — a dim bundle
+      ctx.fillStyle=DIM;ctx.fillRect(cx-4*u,fy-7*u,8*u,7*u);
   }
   ctx.globalAlpha=1;
+}
+
+/* ---------- the swing: 3 frames of blocky amber arc across the lower-center view ---------- */
+// blk() rects only — no smooth curves; 1987 had no antialiasing to spare. The arc sweeps
+// upper-middle -> across -> lower-left from a fist pivot at the lower right. Under
+// prefers-reduced-motion the swing collapses to the single middle frame (a static flash).
+function drawSwing(){
+  const fr=reduced?2:Math.min(3,Math.ceil(swingT/3));         // 3 -> 2 -> 1
+  const ang=fr===3?-2.0:fr===2?-2.65:2.85;                    // radians; y-down canvas
+  const px=CX+96,py=CY+150;
+  blk(px-9,py-9,DIM,0.9,18);                                  // the fist at the hilt
+  for(let j=2;j<=8;j++){
+    const tip=j===8,sz=tip?14:16,bx=px+Math.cos(ang)*j*24,by=py+Math.sin(ang)*j*24;
+    blk(bx-sz/2-3,by-sz/2-3,'#080604',0.85,sz+6);             // dark backing — the arc reads against lit beasts
+    blk(bx-sz/2,by-sz/2,tip?WHITE:AMBER,tip?0.95:0.85,sz);
+  }
 }
 
 /* ---------- the mode ---------- */
@@ -385,13 +514,21 @@ registerMode('dungeon',{
     if(started)return;
     started=true;
     pos={x:ENTRY.x,y:ENTRY.y};facing=ENTRY.facing;hp=3;cool=0;arrows=[];
+    swingT=0;swordCool=0;swordSeen=false;
     // alive per session: spawned once on first arrival; a killed foe is gone for good.
     // stepT staggered by index so the beasts never move in lockstep.
     foes=ENEMIES.map((e,i)=>({x:e.x,y:e.y,hp:e.hp,big:!!e.big,stepT:45+i*17,atkT:30,hurtT:0}));
     flashT=0;
     if(window.__seed)window.__seed.era2={ // dev handles, era-1 idiom
-      foes:()=>foes.map(f=>({...f})),pos:()=>({x:pos.x,y:pos.y,facing}),hp:()=>hp};
+      foes:()=>foes.map(f=>({...f})),pos:()=>({x:pos.x,y:pos.y,facing}),hp:()=>hp,
+      inv:()=>({bow:inv.hasBow(),sword:inv.hasSword(),arrows:inv.arrowCount()}),
+      items:()=>floorItems.map(i=>({...i})),flying:()=>arrows.length,swing:()=>swingT,
+      decor:()=>decor.map(d=>({...d})),
+      warp:(x,y,f)=>{pos={x,y};if(f)facing=f;}};
     floorItems=ITEMS.map(it=>({...it}));
+    decor=DECOR.map(d=>({...d,opened:false}));      // chests open once each, per session
+    candleCell=decor.find(d=>d.sprite==='candleTable')||null;
+    candleSeen=false;
     ioloWaiting=!party.has('iolo');   // first arrival: the bard waits two cells in
     inv.initInventory();
     logLine('> it is dark here.');
@@ -399,6 +536,8 @@ registerMode('dungeon',{
   draw(t){
     T=t;
     if(cool>0)cool--;
+    if(swordCool>0)swordCool--;
+    if(swingT>0)swingT--;
     inv.tick();                       // the torch burns whether you move or not
     tickFoes();                       // and the beasts walk whether you do or not
     updateArrows();
@@ -412,12 +551,14 @@ registerMode('dungeon',{
       drawSides(z);
       for(const s of sprites.filter(p=>Math.min(3,Math.max(0,Math.round(p.d)))===z).sort((a,b)=>b.d-a.d))drawSprite(s);
     }
+    if(swingT>0)drawSwing();          // the arc rides over the scene, under the HUD
     if(flashT>0){ // the strike — a breath of amber across everything
       ctx.fillStyle=AMBER;ctx.globalAlpha=reduced?0.10:0.06+0.16*(flashT/10);
       ctx.fillRect(0,0,W,H);ctx.globalAlpha=1;
     }
     inv.drawHeader(hp);
-    txt(HINT,W-40-cw(HINT,12),H-30,DEEP,.7,12);
+    const hint=HINT+(inv.hasSword()?' · sword swings close':'');
+    txt(hint,W-40-cw(hint,12),H-30,DEEP,.7,12);
     if(inv.isOpen())inv.drawPanel(t);
     // corner command-line: the console, demoted but never gone (sacred — era-1 idiom exactly)
     const log=getLog();

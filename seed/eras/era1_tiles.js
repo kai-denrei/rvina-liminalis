@@ -22,13 +22,13 @@
 // and the Tallest Tree (the world learning a new colour). NO minimap, no waypoints,
 // no quest arrows: memory is the mechanic; the absence is the design.
 // The corner command-line is sacred (state.logLine/getLog). Scanlines/CRT untouched.
-import {registerMode,setMode,keys,reduced} from '../engine.js?v=0b3251d9';
-import {ctx,clear,txt,cw,blk,drawFigure,drawMini,W,H} from '../crt.js?v=0b3251d9';
+import {registerMode,setMode,keys,reduced} from '../engine.js?v=244d1674';
+import {ctx,clear,txt,cw,blk,drawFigure,drawMini,W,H} from '../crt.js?v=244d1674';
 // recruitCardea + descendThroughPortal are imported NOW so the quest phase only fills
 // function bodies — it must not need to touch this import line.
-import {state,flags,FLAG,xp,XP_SOURCE,xpOnLore,party,recruitCardea,cardeaRecall,verb,CAP,descendThroughPortal,logLine,getLog} from '../state.js?v=0b3251d9';
-import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js?v=0b3251d9';
-import {TILE,COLS,ROWS,GRID,SITES,FOES,ROUGH} from './era1_world.js?v=0b3251d9';
+import {state,flags,FLAG,xp,XP_SOURCE,xpOnLore,party,recruitCardea,cardeaRecall,verb,CAP,descendThroughPortal,logLine,getLog} from '../state.js?v=244d1674';
+import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js?v=244d1674';
+import {TILE,COLS,ROWS,GRID,SITES,FOES,ROUGH} from './era1_world.js?v=244d1674';
 
 /* ================= boot-once spine wiring (STATE_MODULE.md §1) ================= */
 verb.enable(CAP.MOVE,CAP.HOSTILE_AI,CAP.QUEST,CAP.PARTY,CAP.RIDDLE); // era-1 verbs accrete
@@ -59,10 +59,6 @@ const walk=(tx,ty)=>{const c=tileAt(tx,ty);return c==='.'||c==='f'||c==='m';};
 const seaAt=(tx,ty)=>tileAt(tx,ty)==='~'&&tx>=50;           // the sea, not the river
 const sx=s=>(s.x+0.5)*TILE,sy=s=>(s.y+0.5)*TILE;            // site -> world px center
 const near=(s,r)=>Math.hypot(fig.x-sx(s),fig.y-sy(s))<r;    // proximity (quest hooks use it too)
-function passBox(px,py,r){ // axis-aligned body vs impassable tiles
-  return walk(((px-r)/TILE)|0,((py-r)/TILE)|0)&&walk(((px+r)/TILE)|0,((py-r)/TILE)|0)
-       &&walk(((px-r)/TILE)|0,((py+r)/TILE)|0)&&walk(((px+r)/TILE)|0,((py+r)/TILE)|0);
-}
 // deterministic per-tile hash (seeded LCG family — the ONLY randomness in the texture)
 function hash(tx,ty,k){
   let s=(Math.imul(tx,374761393)+Math.imul(ty,668265263)+Math.imul(k,69069))>>>0;
@@ -86,15 +82,17 @@ function init(){
   fig={x:sx(SITES.start),y:sy(SITES.start),dir:0};
   trail=[];bolts=[];hp=3;invT=0;edgeNoted=false;exitPrompt=false;heldDirs=[];stepCd=0;
   moonClock=0;lastMoon=0;murmurN=0;joinT=0;flickerT=0;wasAtMarsh=false;
-  foes=FOES.map((f,i)=>({x:sx(f),y:sy(f),alive:true,s:(i*7919+101)>>>0,hd:hash(i,7,9)*6.283,hdT:40+i*17}));
+  // foes live on tile CENTERS now (the player's grammar is theirs too): hd is a cardinal
+  // 0-3, hdT counts wander STEPS before a re-roll, cd staggers cadences by index.
+  foes=FOES.map((f,i)=>({x:sx(f),y:sy(f),alive:true,s:(i*7919+101)>>>0,hd:(hash(i,7,9)*4)|0,hdT:2+(i%3),cd:1+(i*7)%32}));
   // the rough folk stay down once Cardea is found (flags survive re-entry; geometry re-derives)
-  rough=ROUGH.map((r,i)=>({x:sx(r),y:sy(r),hx:sx(r),hy:sy(r),alive:!flags.has(FLAG.FOUND_CARDEA),s:(i*104729+7)>>>0,hd:0,hdT:30}));
+  rough=ROUGH.map((r,i)=>({x:sx(r),y:sy(r),hx:sx(r),hy:sy(r),alive:!flags.has(FLAG.FOUND_CARDEA),s:(i*104729+7)>>>0,hd:i%4,hdT:2,cd:1+(i*9)%25}));
   // the traveler: 'done' (silent scenery) if his once-key was ever paid; else the
   // conversation re-arms on era entry. Hostility is per-session, like the foes — on
   // re-entry mid-grudge (once-key unpaid) the modal re-offers; accepted, documented.
   trav={x:sx(SITES.traveler),y:sy(SITES.traveler),hx:sx(SITES.traveler),hy:sy(SITES.traveler),
         state:flags.has('xp:npc:traveler')?'done':'idle',stage:0,sel:0,hp:3,hitT:0,alive:true,
-        s:31337,hd:0,hdT:30,dismissed:false};
+        s:31337,hd:0,hdT:2,cd:1,dismissed:false};
   logLine('> '+state.year); // arrival: the year, as every era logs it
 }
 
@@ -133,13 +131,33 @@ function tickBolts(){
   bolts=bolts.filter(b=>b.life>0&&b.x>0&&b.x<WPX&&b.y>0&&b.y<HPX);
 }
 
-/* ================= foes (gentle world: wander, chase, 1-arrow kills) ================= */
+/* ================= foes (gentle world: wander, chase, 1-arrow kills) =================
+ * FOES DO NOT GLIDE (operator's law): every foe rests on tile centers and moves one
+ * tile per cadence tick — the player's grammar, at the old speeds. Cadences are the
+ * old px/frame rates converted to frames-per-tile (1.25px/f -> ~32f, 1.6 -> 25,
+ * 1.8 -> 21), so the pursuit FEEL in tiles/second is unchanged. 4-direction greedy
+ * chase in sight; seeded-LCG cardinal wander otherwise; no diagonals, never onto
+ * unwalkable tiles, never onto a cell another foe holds. Melee is the grid's own:
+ * a foe stepping ONTO your cell is the strike (d=0 < the 16px adjacency). */
 function rng(a){a.s=(Math.imul(a.s,1664525)+1013904223)>>>0;return a.s/4294967296;}
-function actorMove(a,vx,vy){
-  const r=8;let m=false;
-  if(passBox(a.x+vx,a.y,r)){a.x+=vx;m=true;}
-  if(passBox(a.x,a.y+vy,r)){a.y+=vy;m=true;}
-  return m;
+const DIR4=[[1,0],[-1,0],[0,1],[0,-1]];
+function cellTaken(tx,ty,self){ // foes never stack on one cell
+  for(const f of foes)if(f!==self&&f.alive&&((f.x/TILE)|0)===tx&&((f.y/TILE)|0)===ty)return true;
+  for(const r of rough)if(r!==self&&r.alive&&((r.x/TILE)|0)===tx&&((r.y/TILE)|0)===ty)return true;
+  if(trav!==self&&((trav.x/TILE)|0)===tx&&((trav.y/TILE)|0)===ty)return true;
+  return false;
+}
+function stepActor(a,dx,dy){ // one attempted foe tile step: blocked/occupied = no move
+  const tx=(a.x/TILE)|0,ty=(a.y/TILE)|0,nx=tx+dx,ny=ty+dy;
+  if(!walk(nx,ny)||cellTaken(nx,ny,a))return false;
+  a.x=(nx+0.5)*TILE;a.y=(ny+0.5)*TILE;return true;
+}
+function stepToward(a,wx,wy){ // greedy 4-direction step: longer axis first, then the other
+  const dx=wx-a.x,dy=wy-a.y;
+  const fx=Math.abs(dx)>=Math.abs(dy)?Math.sign(dx):0,fy=fx?0:Math.sign(dy);
+  if((fx||fy)&&stepActor(a,fx,fy))return true;
+  const gx=fx?0:Math.sign(dx),gy=fx?Math.sign(dy):0;
+  return (gx||gy)?stepActor(a,gx,gy):false;
 }
 function hitPlayer(src){
   hp--;invT=70;
@@ -157,18 +175,17 @@ function hitPlayer(src){
     logLine('> you wake where you began.');
   }
 }
-function tickFoe(f,sight,chaseSp,wanderSp,tether){
+function tickFoe(f,sight,chaseT,wanderT,tether){ // cadences in FRAMES per tile step
   if(!f.alive)return;
   const d=Math.hypot(fig.x-f.x,fig.y-f.y);
-  let ang,sp;
-  if(d<sight){ang=Math.atan2(fig.y-f.y,fig.x-f.x);sp=chaseSp;}      // chase when player is near
-  else if(tether&&Math.hypot(f.hx-f.x,f.hy-f.y)>3*TILE){ang=Math.atan2(f.hy-f.y,f.hx-f.x);sp=wanderSp;}
-  else{
-    if(--f.hdT<=0){f.hdT=70+(rng(f)*90|0);f.hd=rng(f)*6.283;}        // seeded per-foe drift
-    ang=f.hd;sp=wanderSp;
+  if(d<16&&invT<=0)hitPlayer(f);                 // same cell = struck (checked every frame)
+  if(--f.cd>0)return;                            // between steps a foe RESTS on its center
+  if(d<sight){f.cd=chaseT;stepToward(f,fig.x,fig.y);return;}          // chase when player is near
+  f.cd=wanderT;
+  if(tether&&Math.hypot(f.hx-f.x,f.hy-f.y)>3*TILE){stepToward(f,f.hx,f.hy);return;} // home tether, in tiles
+  if(--f.hdT<=0||!stepActor(f,DIR4[f.hd][0],DIR4[f.hd][1])){          // seeded per-foe drift
+    f.hdT=3+(rng(f)*5|0);f.hd=(rng(f)*4)|0;                           // re-roll heading; step lands next tick
   }
-  if(!actorMove(f,Math.cos(ang)*sp,Math.sin(ang)*sp))f.hdT=0;
-  if(d<16&&invT<=0)hitPlayer(f);
 }
 
 /* ================= life gives XP — the geographic awards (core) ================= */
@@ -294,10 +311,9 @@ function travHook(){ // trigger: approach while unpaid, peaceable, and not fresh
 }
 function travTick(){ // his body, per state (the modal itself freezes him)
   if(trav.hitT>0)trav.hitT--;
-  if(trav.state==='hostile')tickFoe(trav,7*TILE,1.8,.5,true);       // STRONG: faster than rough folk
+  if(trav.state==='hostile')tickFoe(trav,7*TILE,21,42,true);        // STRONG: the fastest cadence
   else if(trav.state==='done'&&Math.hypot(trav.x-trav.hx,trav.y-trav.hy)>4){
-    const ang=Math.atan2(trav.hy-trav.y,trav.hx-trav.x);            // hostility over: he walks home
-    actorMove(trav,Math.cos(ang)*.8,Math.sin(ang)*.8);
+    if(--trav.cd<=0){trav.cd=50;stepToward(trav,trav.hx,trav.hy);}  // hostility over: he steps home
   }
 }
 function travModalKey(e){ // swallows ALL keys while open (the world is paused)
@@ -554,8 +570,8 @@ function drawTop(t){
   }else stepCd=0;                                  // released: the next press steps at once
 
   // ---- simulation ----
-  for(const f of foes)tickFoe(f,5*TILE,1.25,.45,false);    // chase within ~5 tiles
-  for(const f of rough)tickFoe(f,7*TILE,1.6,.5,true);      // rough folk: chase on sight, faster
+  for(const f of foes)tickFoe(f,5*TILE,32,80,false);       // chase within ~5 tiles (one tile / 32f)
+  for(const f of rough)tickFoe(f,7*TILE,25,72,true);       // rough folk: chase on sight, faster
   travTick();                                              // the traveler's body, per state
   tickBolts();
   lifeTick();
@@ -666,6 +682,7 @@ if(window.__seed)window.__seed.era1={
   warp(tx,ty){if(!fig)return;fig.x=(tx+0.5)*TILE;fig.y=(ty+0.5)*TILE;trail.length=0;},
   setMoon(n){moonClock=n;lastMoon=moonIdx();},
   probe(){return fig?{x:fig.x,y:fig.y,hp,foes:foes.filter(f=>f.alive).length,rough:rough.filter(r=>r.alive).length,moon:moonIdx(),xp:xp.total,level:xp.level,
+    foesXY:foes.map(f=>f.alive?[f.x,f.y]:null),roughXY:rough.map(r=>r.alive?[r.x,r.y]:null),
     trav:trav.state,travHp:trav.hp,travX:trav.x,travY:trav.y,
     travPaid:flags.has('xp:npc:traveler'),knows:flags.has(FLAG.KNOWS_CARDEA_REGION),
     log:getLog().slice()}:null;},

@@ -6,10 +6,10 @@
 // Era-0 GOALS (the progression layer; game mechanics untouched): each game carries a
 // one-time goal that sets its FLAG, grows the verb, and speaks a 'line' — then the game
 // reverts to its original endless arcade self forever after.
-import {registerMode,setMode,keys} from '../engine.js?v=0b3251d9';
-import {ctx,clear,txt,blk,cw,W,H} from '../crt.js?v=0b3251d9';
-import {state,flags,FLAG,verb,CAP} from '../state.js?v=0b3251d9';
-import {AMBER,DIM,DEEP,WHITE} from '../palette.js?v=0b3251d9';
+import {registerMode,setMode,keys} from '../engine.js?v=244d1674';
+import {ctx,clear,txt,blk,cw,W,H} from '../crt.js?v=244d1674';
+import {state,flags,FLAG,verb,CAP} from '../state.js?v=244d1674';
+import {AMBER,DIM,DEEP,WHITE} from '../palette.js?v=244d1674';
 
 /* ---------- BALLISTIC (PoC port) ---------- */
 const GND=H-60;
