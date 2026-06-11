@@ -39,10 +39,20 @@ something upstream is still serving a stale copy.
 
 ### Note on module freshness
 
-Only the URLs written in `index.html` carry the `?v=` fingerprint. ES module
-imports (`main.js` → `engine.js` → `crt.js` → …) are **not** fingerprinted —
-dev freshness for those comes from `serve.py`'s no-cache headers. For
-production hosting, see the cache-busting skill's `references/server-headers.md`.
+The whole import graph is fingerprinted. Besides the URLs in `index.html`,
+`bust.sh` (step 2c) rewrites every **relative** ES-module import specifier in
+the `.js` files (`main.js` → `engine.js` → `crt.js` → …) to carry
+`?v=<token>`, idempotently — a re-run replaces the token, never stacks it.
+`sw.js` is a classic script with no imports; its only token is the `CB_TOKEN`
+line (step 2b). `pwa.js` registers `./sw.js` un-fingerprinted on purpose, so
+the SW URL stays stable and the browser's byte-diff update check works.
+
+`serve.py`'s no-cache headers remain the dev belt-and-braces. On production
+hosting where headers can't be controlled (GitHub Pages, `max-age=600`),
+freshness is covered by this full-graph fingerprinting plus the token-keyed
+service-worker cache (`seed-<token>`; old caches purged on activate) — a stale
+CDN copy of a module can no longer outlive a fresh `index.html`, because the
+fresh graph requests it under a URL the CDN has never seen.
 
 ## Mobile & PWA
 

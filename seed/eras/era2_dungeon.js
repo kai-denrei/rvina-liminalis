@@ -8,14 +8,15 @@
 // New primitives carried (ledger §5): inventory/weight (era2_inventory), depletion
 // (torch -> lightLevel() dims the depth slots), loss of god's-eye (you are inside now).
 // The corner command-line persists — sacred (bible §7). EXIT cell -> seam_2_3.
-// The ENEMY const sits on the only corridor to EXIT; the beast is live (Threat phase):
-// movement collision and arrow hits both route through the single point enemyAt().
-import {registerMode,setMode,reduced} from '../engine.js';
-import {ctx,clear,txt,cw,blk,W,H} from '../crt.js';
-import {logLine,getLog,party,flags,FLAG} from '../state.js';
-import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js';
-import {GRID,ENTRY,ITEMS,ENEMY,EXIT} from './era2_map.js';
-import * as inv from './era2_inventory.js';
+// ENEMIES[0] sits on the only corridor to EXIT; two lesser beasts live deeper in.
+// All are live (Threat phase): movement collision and arrow hits both route through
+// the single point enemyAt()/foeAt().
+import {registerMode,setMode,reduced} from '../engine.js?v=0b3251d9';
+import {ctx,clear,txt,cw,blk,W,H} from '../crt.js?v=0b3251d9';
+import {logLine,getLog,party,flags,FLAG,xp,XP_SOURCE} from '../state.js?v=0b3251d9';
+import {AMBER,DIM,DEEP,WHITE,TEAL} from '../palette.js?v=0b3251d9';
+import {GRID,ENTRY,ITEMS,ENEMIES,EXIT} from './era2_map.js?v=0b3251d9';
+import * as inv from './era2_inventory.js?v=0b3251d9';
 
 /* ---------- grid math ---------- */
 const CX=W/2,CY=H/2;
@@ -25,50 +26,58 @@ const RV={N:[1,0],E:[0,1],S:[-1,0],W:[0,-1]};      // right (90° clockwise of f
 const wallAt=(x,y)=>x<0||y<0||x>15||y>15||GRID[y][x]==='#';
 
 /* =======================================================================
-   THE BEAST (Threat phase). One live state object spawned from the ENEMY
-   const; movement collision and arrow hit-detection both route through
-   enemyAt(). Greedy chase on a ~45-frame tick: one cell toward the player,
-   preferring the axis of larger distance, the other if walls block —
-   no pathfinding, it is 1987. It never enters the player's cell. Adjacent,
-   it strikes on a ~60-frame tick (hp-1, brief amber wash, '> it strikes.').
-   Arrows: '> it recoils.'; at 0 hp '> it comes apart.' and the cell clears
-   permanently for the session. The player at 0 hp wakes at ENTRY, hp 3,
-   pack intact — the dungeon does not give the arrows back.
+   THE BEASTS (Threat phase). Live state objects spawned from ENEMIES;
+   movement collision and arrow hit-detection both route through foeAt().
+   Greedy chase on each foe's own ~45-frame tick (staggered by index, no
+   lockstep): one cell toward the player, preferring the axis of larger
+   distance, the other if walls block — no pathfinding, it is 1987. Leashed:
+   the big one stirs within ~6 cells, lesser beasts within ~4, so deep rooms
+   stay calm until entered. None enters the player's cell (or another foe's).
+   Adjacent, it strikes on a ~60-frame tick (hp-1, brief amber wash,
+   '> it strikes.'). Arrows: '> it recoils.'; at 0 hp '> it comes apart.',
+   FELL_FOE xp (the log already speaks; SURVIVE_FIGHT once for the big one)
+   and the cell clears permanently for the session. The player at 0 hp wakes
+   at ENTRY, hp 3, pack intact — the dungeon does not give the arrows back.
    ======================================================================= */
-let foe=null,foeStepT=45,foeAtkT=30,foeHurtT=0,flashT=0;
-function enemyAt(x,y){return !!foe&&foe.x===x&&foe.y===y;}
-function tickEnemy(){
-  if(foeHurtT>0)foeHurtT--;
+let foes=[],flashT=0;
+const foeAt=(x,y)=>foes.find(f=>f.x===x&&f.y===y)||null;
+function enemyAt(x,y){return !!foeAt(x,y);}
+function tickFoes(){
   if(flashT>0)flashT--;
-  if(!foe)return;
-  const dx=pos.x-foe.x,dy=pos.y-foe.y,adj=Math.abs(dx)+Math.abs(dy)===1;
-  if(--foeStepT<=0){
-    foeStepT=45;
-    if(!adj){ // greedy: the longer axis first, the other when the wall says no
-      const opts=Math.abs(dx)>=Math.abs(dy)
-        ?[[Math.sign(dx),0],[0,Math.sign(dy)]]
-        :[[0,Math.sign(dy)],[Math.sign(dx),0]];
-      for(const [ox,oy] of opts){
-        if(!ox&&!oy)continue;
-        const nx=foe.x+ox,ny=foe.y+oy;
-        if(wallAt(nx,ny)||(nx===pos.x&&ny===pos.y))continue; // walls block; never the player's cell
-        foe.x=nx;foe.y=ny;break;
+  for(const f of foes){
+    if(f.hurtT>0)f.hurtT--;
+    const dx=pos.x-f.x,dy=pos.y-f.y,dist=Math.abs(dx)+Math.abs(dy),adj=dist===1;
+    if(--f.stepT<=0){
+      f.stepT=45;
+      if(!adj&&dist<=(f.big?6:4)){ // greedy, leashed: the longer axis first, the other when the wall says no
+        const opts=Math.abs(dx)>=Math.abs(dy)
+          ?[[Math.sign(dx),0],[0,Math.sign(dy)]]
+          :[[0,Math.sign(dy)],[Math.sign(dx),0]];
+        for(const [ox,oy] of opts){
+          if(!ox&&!oy)continue;
+          const nx=f.x+ox,ny=f.y+oy;
+          if(wallAt(nx,ny)||(nx===pos.x&&ny===pos.y)||foeAt(nx,ny))continue; // walls and bodies block
+          f.x=nx;f.y=ny;break;
+        }
       }
     }
+    if(adj){
+      if(--f.atkT<=0){
+        f.atkT=60;
+        hp--;flashT=reduced?2:10;           // the amber wash — short and steady under reduced motion
+        logLine('> it strikes.');
+        if(hp<=0){respawn();return;}
+      }
+    }else f.atkT=Math.min(f.atkT,30);       // half a beat of warning when it closes in
   }
-  if(adj){
-    if(--foeAtkT<=0){
-      foeAtkT=60;
-      hp--;flashT=reduced?2:10;             // the amber wash — short and steady under reduced motion
-      logLine('> it strikes.');
-      if(hp<=0)respawn();
-    }
-  }else foeAtkT=Math.min(foeAtkT,30);       // half a beat of warning when it closes in
 }
-function hurtFoe(){ // an arrow found it (wired from updateArrows through enemyAt)
-  foe.hp--;
-  if(foe.hp>0){foeHurtT=8;logLine('> it recoils.');}
-  else{foe=null;logLine('> it comes apart.');} // the corridor is yours — for good, this session
+function hurtFoe(f){ // an arrow found it (wired from updateArrows through foeAt)
+  f.hp--;
+  if(f.hp>0){f.hurtT=8;logLine('> it recoils.');return;}
+  foes.splice(foes.indexOf(f),1);          // the cell is yours — for good, this session
+  logLine('> it comes apart.');
+  xp.award(XP_SOURCE.FELL_FOE);            // no note — the log already speaks
+  if(f.big)xp.award(XP_SOURCE.SURVIVE_FIGHT,{once:'era2_big_foe'});
 }
 function respawn(){ // death is a relocation, not a reset: the pack persists, spent arrows stay spent
   pos={x:ENTRY.x,y:ENTRY.y};facing=ENTRY.facing;hp=3;cool=COOL;arrows=[];
@@ -211,7 +220,8 @@ function updateArrows(){
     while(a.sub>=1){
       a.sub-=1;a.x+=a.fx;a.y+=a.fy;
       if(wallAt(a.x,a.y)){a.dead=true;break;}     // lost to the wall
-      if(enemyAt(a.x,a.y)){hurtFoe();a.dead=true;break;}   // hit
+      const f=foeAt(a.x,a.y);                     // the (one) living foe on the cell
+      if(f){hurtFoe(f);a.dead=true;break;}        // hit
     }
     if(Math.abs(a.x-pos.x)+Math.abs(a.y-pos.y)>20)a.dead=true;
   }
@@ -261,7 +271,7 @@ function collectSprites(){
   const e=rel(EXIT.x,EXIT.y);if(e.d>-0.3&&e.d<4.3&&Math.abs(e.lat)<2.1)out.push({d:e.d,lat:e.lat,kind:'exit'});
   if(ioloWaiting){const p=rel(IOLO_CELL.x,IOLO_CELL.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:'iolo'});}
   for(const a of arrows){const p=rel(a.x+a.fx*a.sub,a.y+a.fy*a.sub);if(p.d>0.15&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:'arrow'});}
-  if(foe){const p=rel(foe.x,foe.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:'foe'});}
+  for(const f of foes){const p=rel(f.x,f.y);if(p.d>-0.3&&p.d<4.3&&Math.abs(p.lat)<2.1)out.push({d:p.d,lat:p.lat,kind:'foe',foe:f});}
   return out;
 }
 function drawDoor(s){ // the EXIT cell renders as a doorway, standing at the far edge of its cell
@@ -275,9 +285,9 @@ function drawDoor(s){ // the EXIT cell renders as a doorway, standing at the far
 }
 function drawFoe(s){ // the hunched beast: chunky rects/strokes, DIM body, AMBER eyes — at every depth
   const d=Math.max(s.d,0.5),f=pf(d),b=bright(d);
-  const cx=CX+s.lat*W*f,fy=CY+CY*f-2,u=1.3*f;       // u: the beast is big — half the corridor
+  const cx=CX+s.lat*W*f,fy=CY+CY*f-2,u=(s.foe.big?1.3:1.04)*f; // u: the big one fills half the corridor; lesser beasts ~0.8 of it
   const aB=Math.max(0.25,Math.min(1,b*1.4));        // silhouette floor: it reads even past the torch
-  ctx.globalAlpha=aB;ctx.fillStyle=foeHurtT>0?AMBER:DIM;  // the recoil lights it up for a breath
+  ctx.globalAlpha=aB;ctx.fillStyle=s.foe.hurtT>0?AMBER:DIM;  // the recoil lights it up for a breath
   ctx.beginPath();                                  // one path, one fill: no alpha compounding
   ctx.rect(cx-130*u,fy-100*u,84*u,100*u);           // left haunch
   ctx.rect(cx+46*u, fy-100*u,84*u,100*u);           // right haunch
@@ -375,7 +385,12 @@ registerMode('dungeon',{
     if(started)return;
     started=true;
     pos={x:ENTRY.x,y:ENTRY.y};facing=ENTRY.facing;hp=3;cool=0;arrows=[];
-    foe={x:ENEMY.x,y:ENEMY.y,hp:ENEMY.hp};foeStepT=45;foeAtkT=30;foeHurtT=0;flashT=0;
+    // alive per session: spawned once on first arrival; a killed foe is gone for good.
+    // stepT staggered by index so the beasts never move in lockstep.
+    foes=ENEMIES.map((e,i)=>({x:e.x,y:e.y,hp:e.hp,big:!!e.big,stepT:45+i*17,atkT:30,hurtT:0}));
+    flashT=0;
+    if(window.__seed)window.__seed.era2={ // dev handles, era-1 idiom
+      foes:()=>foes.map(f=>({...f})),pos:()=>({x:pos.x,y:pos.y,facing}),hp:()=>hp};
     floorItems=ITEMS.map(it=>({...it}));
     ioloWaiting=!party.has('iolo');   // first arrival: the bard waits two cells in
     inv.initInventory();
@@ -385,7 +400,7 @@ registerMode('dungeon',{
     T=t;
     if(cool>0)cool--;
     inv.tick();                       // the torch burns whether you move or not
-    tickEnemy();                      // and the beast walks whether you do or not
+    tickFoes();                       // and the beasts walk whether you do or not
     updateArrows();
     clear();
     ctx.imageSmoothingEnabled=false;  // chunky pixels — the upscale IS the look

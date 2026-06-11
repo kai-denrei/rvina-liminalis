@@ -4,10 +4,10 @@
 // era-2 uses). The year ticks 1987→1992 (era-3 reference band, bible §4) into state.year.
 // The corner command-line persists — sacred — and the machine admits era 3 isn't built.
 // Then back to select.
-import {registerMode,setMode,reduced} from '../engine.js';
-import {ctx,clear,txt,W,H} from '../crt.js';
-import {state,logLine,getLog} from '../state.js';
-import {DIM,DEEP,TEAL} from '../palette.js';
+import {registerMode,setMode,reduced} from '../engine.js?v=0b3251d9';
+import {ctx,clear,txt,W,H} from '../crt.js?v=0b3251d9';
+import {state,logLine,getLog} from '../state.js?v=0b3251d9';
+import {DIM,DEEP,TEAL} from '../palette.js?v=0b3251d9';
 
 let st=0,LEN=260,noted=false;
 

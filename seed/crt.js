@@ -3,17 +3,23 @@
 // is sacred — it demotes (boot screen → corner log → dialogue → subtitle) but never changes
 // engine. Never re-implement text per era; never set ctx.font or call fillText outside this file.
 // Helper bodies are byte-faithful ports of the seed_console2.html PoC.
-import {AMBER} from './palette.js';
+import {AMBER} from './palette.js?v=0b3251d9';
 
 export const W=800,H=600;
 export let ctx;
 
 export function init(canvas){ctx=canvas.getContext('2d');canvas.width=W;canvas.height=H;}
 
+// FSCALE — global font multiplier for coarse-pointer (touch) devices, where the 800x600
+// canvas shrinks to ~390px and 13px type renders ~6px. txt() and cw() both apply it, so
+// right-aligned callers (x - cw(str,s)) stay aligned. Desktop stays at 1 — no visual drift.
+export let FSCALE=1;
+export function setFontScale(f){FSCALE=f;}
+
 export function clear(){ctx.fillStyle='#080604';ctx.fillRect(0,0,W,H);}
-export function txt(str,x,y,c=AMBER,a=1,s=15){ctx.globalAlpha=a;ctx.fillStyle=c;ctx.font=s+'px "JetBrains Mono",monospace';ctx.textBaseline='top';ctx.fillText(str,x,y);ctx.globalAlpha=1;}
+export function txt(str,x,y,c=AMBER,a=1,s=15){ctx.globalAlpha=a;ctx.fillStyle=c;ctx.font=(s*FSCALE)+'px "JetBrains Mono",monospace';ctx.textBaseline='top';ctx.fillText(str,x,y);ctx.globalAlpha=1;}
 export function blk(x,y,c,a=1,s=3){ctx.globalAlpha=a;ctx.fillStyle=c;ctx.fillRect(x|0,y|0,s,s);ctx.globalAlpha=1;}
-export function cw(str,s=15){ctx.font=s+'px "JetBrains Mono",monospace';return ctx.measureText(str).width;}
+export function cw(str,s=15){ctx.font=(s*FSCALE)+'px "JetBrains Mono",monospace';return ctx.measureText(str).width;}
 
 /* ---------- shared figure ---------- */
 export function drawFigure(x,y,dir,a=1){

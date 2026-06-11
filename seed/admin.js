@@ -4,8 +4,8 @@
 //          seam_1_2 | dungeon (era2) | seam_2_3 | off
 // Invisible to players; works on phones and headless QA alike. Admin sessions never
 // pollute a real save: main.js only wires the store when ?admin= is ABSENT.
-import {setMode} from './engine.js';
-import {state,flags,FLAG,party,recruitCardea,getLog} from './state.js';
+import {setMode} from './engine.js?v=0b3251d9';
+import {state,flags,FLAG,party,recruitCardea,getLog} from './state.js?v=0b3251d9';
 
 const ALIAS={era0:'select',basics:'select',era1:'topdown',limina:'topdown',limina1:'topdown',era2:'dungeon',dm:'dungeon'};
 const VALID=new Set(['select','ballistic','asteroid','tanks','seam','topdown','seam_1_2','dungeon','seam_2_3','off']);

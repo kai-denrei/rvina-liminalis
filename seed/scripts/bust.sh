@@ -84,6 +84,58 @@ if [[ -f sw.js ]]; then
   [[ -z "$QUIET" ]] && echo "  ✓ sw token bumped in sw.js"
 fi
 
+# ---------- 2c. Fingerprint relative ES-module import specifiers in .js ----------
+# Closes the documented module-freshness gap: index.html's ?v= covers main.js,
+# but the import graph below it (main.js → engine.js → crt.js → …) was served
+# bare, so a CDN (e.g. GH Pages, max-age=600) could pair a fresh index.html
+# with stale modules. Rewrites relative static + dynamic import specifiers
+# ('./x.js', '../y.js') to carry ?v=<TOKEN>. Idempotent: an existing ?v= is
+# replaced, never stacked. Skips the same dirs as walk_source_files, plus
+# scripts/ and public/, plus sw.js (a classic script — CB_TOKEN is its only
+# token) and line-commented import examples. Python, not sed: the quoting and
+# idempotent query replacement are too fragile for sed.
+TOKEN="$TOKEN" CB_QUIET="$QUIET" python3 - <<'PY'
+import os, re, sys
+
+token = os.environ["TOKEN"]
+SKIP_DIRS = {"node_modules", ".git", "dist", "build", ".next", ".nuxt",
+             "scripts", "public"}
+
+# ( from | bare import | dynamic import( ) + quote + relative .js path + optional ?query
+PAT = re.compile(
+    r"""(\bfrom\s+|\bimport\s+|\bimport\s*\(\s*)(['"])(\.\.?/[^'"?]+\.js)(\?[^'"]*)?\2"""
+)
+
+n_files = n_rewrites = 0
+for root, dirs, files in os.walk("."):
+    dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+    for name in files:
+        if not name.endswith(".js") or name in ("sw.js", "cb-badge.js"):
+            continue
+        path = os.path.join(root, name)
+        changed = 0
+        out_lines = []
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                def repl(m):
+                    global changed
+                    # leave line-commented import examples alone
+                    if "//" in line[: m.start()]:
+                        return m.group(0)
+                    changed += 1
+                    return m.group(1) + m.group(2) + m.group(3) + "?v=" + token + m.group(2)
+                out_lines.append(PAT.sub(repl, line))
+        if changed:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.writelines(out_lines)
+            n_files += 1
+            n_rewrites += changed
+            if not os.environ.get("CB_QUIET"):
+                print("  ✓ " + path[2:] + " (" + str(changed) + " imports)")
+print("fingerprinted " + str(n_rewrites) + " module imports across " +
+      str(n_files) + " js files with v=" + token)
+PY
+
 # ---------- 3. Bump the favicon href to a new cell (if visual badge is installed) ----------
 # Leading byte of the token picks the cell (byte mod 64).
 B0=$(printf "%d" 0x${TOKEN:0:2})

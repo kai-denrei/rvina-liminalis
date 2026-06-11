@@ -1,10 +1,10 @@
 // console.js — the machine's own voice: boot, select, line, off (bible §8 current behavior).
 // Faithful ports of the PoC's drawBoot/drawSelect/drawOff, plus 'line' (the era-goal
 // success beat, off-beat styled). All words go through crt.txt() — the command-line is sacred.
-import {registerMode,setMode,reduced} from './engine.js';
-import {ctx,clear,txt,cw,W,H} from './crt.js';
-import {state,flags,FLAG} from './state.js';
-import {AMBER,DIM,DEEP} from './palette.js';
+import {registerMode,setMode,reduced} from './engine.js?v=0b3251d9';
+import {ctx,clear,txt,cw,W,H} from './crt.js?v=0b3251d9';
+import {state,flags,FLAG} from './state.js?v=0b3251d9';
+import {AMBER,DIM,DEEP} from './palette.js?v=0b3251d9';
 
 /* ---------- BOOT ---------- */
 const bootLines=['SEED SYSTEM  v0.1','','CORE ........ OK','PHOSPHOR .... OK','MEMORY ...... 4096 WORDS','','READY.'];

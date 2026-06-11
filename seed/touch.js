@@ -3,7 +3,7 @@
 // primary pointer is coarse, so desktop layout stays pixel-identical. Input flows through
 // engine's virtual-key API (pressKey/repeatKey/releaseKey) — modes see exactly the same
 // keys{} map and key(e) events as a physical keyboard. No mode/era code is touched.
-import {pressKey,repeatKey,releaseKey} from './engine.js';
+import {pressKey,repeatKey,releaseKey} from './engine.js?v=0b3251d9';
 
 const REPEAT_MS=90; // ~OS key-repeat cadence — ballistic aim and menu nav rely on repeated keydown
 
@@ -39,7 +39,9 @@ if(matchMedia('(pointer: coarse)').matches){
       btn.classList.add('held');
       pressKey(k);
       if(timer!==null)clearInterval(timer);
-      if(!btn.dataset.norepeat)timer=setInterval(()=>repeatKey(k),REPEAT_MS); // INV is a toggle: press/release only
+      // tanks ↑/↓ are auto-drive latches — one press toggles, hold-repeat would machine-gun it
+      const tanksLatch=window.__seed&&window.__seed.getMode&&window.__seed.getMode()==='tanks'&&(k==='ArrowUp'||k==='ArrowDown');
+      if(!btn.dataset.norepeat&&!tanksLatch)timer=setInterval(()=>repeatKey(k),REPEAT_MS); // INV is a toggle: press/release only
     });
     btn.addEventListener('pointerup',release);
     btn.addEventListener('pointercancel',release);
@@ -48,9 +50,14 @@ if(matchMedia('(pointer: coarse)').matches){
 
   // In the dungeon, ◀ ▶ TURN rather than strafe — show what they do (Gerald, 2026-06-11)
   const L=deck.querySelector('.dk.left'),R=deck.querySelector('.dk.right');
+  const U=deck.querySelector('.dk.up'),D=deck.querySelector('.dk.down');
   setInterval(()=>{
     const d=window.__seed&&window.__seed.getMode&&window.__seed.getMode()==='dungeon';
     if(L.textContent!==(d?'↺':'◀'))L.textContent=d?'↺':'◀';
     if(R.textContent!==(d?'↻':'▶'))R.textContent=d?'↻':'▶';
+    // tanks auto-drive latch — steady 'engaged' glow on the latched direction (only while in tanks)
+    const a=window.__seed&&window.__seed.getMode&&window.__seed.getMode()==='tanks'&&window.__seed.tanks&&window.__seed.tanks.auto?window.__seed.tanks.auto():0;
+    U.classList.toggle('latched',a===1);
+    D.classList.toggle('latched',a===-1);
   },250);
 }

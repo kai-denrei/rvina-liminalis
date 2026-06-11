@@ -2,16 +2,16 @@
 // Byte-faithful port of the PoC drawSeam: year tick 1979→1985 (written into state.year as it
 // goes — era 1 reads it), grid bleed, figure resolve at p>0.6. The three seam log lines are
 // pushed through state.logLine as they appear so they persist into era 1.
-// The FINAL line '> there is an outside' renders in TEAL — the second colour's first and only
+// The FINAL line '> is there an outside?' renders in TEAL — the second colour's first and only
 // V1 appearance (PM/story decision; do not use TEAL anywhere else).
-import {registerMode,setMode,reduced} from '../engine.js';
-import {ctx,clear,txt,drawFigure,W,H} from '../crt.js';
-import {state,logLine} from '../state.js';
-import {DIM,DEEP,TEAL} from '../palette.js';
+import {registerMode,setMode,reduced} from '../engine.js?v=0b3251d9';
+import {ctx,clear,txt,drawFigure,W,H} from '../crt.js?v=0b3251d9';
+import {state,logLine} from '../state.js?v=0b3251d9';
+import {DIM,DEEP,TEAL} from '../palette.js?v=0b3251d9';
 
 let seamT=0,pushed=0;
 const SEAM_LEN=reduced?20:200;
-const seamLog=['> boot','> the screen got bigger','> there is an outside'];
+const seamLog=['> boot','> the screen got bigger','> is there an outside?'];
 
 registerMode('seam',{
   enter(){seamT=0;pushed=0;},

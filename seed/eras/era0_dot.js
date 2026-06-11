@@ -6,10 +6,10 @@
 // Era-0 GOALS (the progression layer; game mechanics untouched): each game carries a
 // one-time goal that sets its FLAG, grows the verb, and speaks a 'line' — then the game
 // reverts to its original endless arcade self forever after.
-import {registerMode,setMode,keys} from '../engine.js';
-import {ctx,clear,txt,blk,cw,W,H} from '../crt.js';
-import {state,flags,FLAG,verb,CAP} from '../state.js';
-import {AMBER,DIM,DEEP,WHITE} from '../palette.js';
+import {registerMode,setMode,keys} from '../engine.js?v=0b3251d9';
+import {ctx,clear,txt,blk,cw,W,H} from '../crt.js?v=0b3251d9';
+import {state,flags,FLAG,verb,CAP} from '../state.js?v=0b3251d9';
+import {AMBER,DIM,DEEP,WHITE} from '../palette.js?v=0b3251d9';
 
 /* ---------- BALLISTIC (PoC port) ---------- */
 const GND=H-60;
@@ -114,6 +114,8 @@ const obstacles=[
 const solids=walls.concat(obstacles);
 const P_HOME={x:150,y:H/2,a:0},E_HOME={x:650,y:H/2,a:Math.PI};
 let P,E,aiWob=0,aiWobT=0,aiCool=0;
+let autoDrive=0; // auto-drive latch: 1 fwd, -1 rev, 0 off — ↑/↓ toggle, player focuses on left-right (Gerald, 2026-06-11)
+if(window.__seed)window.__seed.tanks={auto:()=>autoDrive,pos:()=>P?{x:P.x,y:P.y}:null}; // deck latch + headless probe
 function mkTank(home){return {x:home.x,y:home.y,a:home.a,shell:null,spin:0,dvx:0,dvy:0};}
 function resetTanks(){P=mkTank(P_HOME);E=mkTank(E_HOME);aiWob=0;aiWobT=0;aiCool=0;}
 function hitRect(cx,cy,r){for(const rc of solids){const px=Math.max(rc.x,Math.min(cx,rc.x+rc.w)),py=Math.max(rc.y,Math.min(cy,rc.y+rc.h));if((cx-px)*(cx-px)+(cy-py)*(cy-py)<r*r)return true;}return false;}
@@ -149,6 +151,7 @@ function drawTank(tk,c,filled){
 registerMode('tanks',{
   enter(){
     if(!state.scores.tanks)state.scores.tanks={p:0,e:0}; // scores persist for the session
+    autoDrive=0;
     resetTanks();
   },
   draw(t){
@@ -160,7 +163,7 @@ registerMode('tanks',{
     if(P.spin>0)spinStep(P,P_HOME,E);
     else{
       if(keys['ArrowLeft'])P.a-=0.045;if(keys['ArrowRight'])P.a+=0.045;
-      let mv=0;if(keys['ArrowUp'])mv=1.5;else if(keys['ArrowDown'])mv=-0.8;
+      const mv=autoDrive===1?1.5:autoDrive===-1?-0.8:0; // auto-drive: same speeds as the old held-key drive
       if(mv){const nx=P.x+Math.cos(P.a)*mv,ny=P.y+Math.sin(P.a)*mv;if(!blockedT(nx,ny,E)){P.x=nx;P.y=ny;}}
     }
     // enemy — era-0 dumb, visibly mechanical
@@ -194,10 +197,16 @@ registerMode('tanks',{
     }
     // HUD — Combat's score strip, adapted
     txt('YOU '+sc.p,50,40,AMBER,.9);
+    if(autoDrive!==0)txt(autoDrive===1?'AUTO ▲':'AUTO ▼',50,62,AMBER,.9,12); // engaged indicator, under YOU
     txt('IT '+sc.e,W-130,40,DIM,.9);
-    txt('← → TURN   ↑ DRIVE   SPACE FIRE   ESC MENU',50,H-38,DEEP,.9);
+    txt('← → TURN   ↑ AUTO-FWD   ↓ AUTO-REV   SPACE FIRE   ESC MENU',50,H-38,DEEP,.9);
   },
   key(e){
+    if(e.key==='ArrowUp'||e.key==='ArrowDown'){
+      if(e.repeat)return; // physical hold must not re-toggle the latch
+      if(e.key==='ArrowUp')autoDrive=autoDrive===1?0:1;
+      else autoDrive=autoDrive===-1?0:-1;
+    }
     if(e.key===' ')fireTank(P);
     if(e.key==='Escape'){setMode('select');}
   }

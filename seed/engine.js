@@ -1,7 +1,7 @@
 // engine.js — rAF loop, mode registry, input bus, reduced-motion (bible §7).
 // Owns the DOM and the clock. Imports crt only (never mode modules); modes self-register
 // via registerMode() on import, and main.js calls start() — keeps the import graph acyclic.
-import * as crt from './crt.js';
+import * as crt from './crt.js?v=0b3251d9';
 
 export const keys={};
 export const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -54,6 +54,10 @@ export function start(){
   const screen=document.getElementById('screen');
   const powerBtn=document.getElementById('power');
   crt.init(cv);
+
+  // touch readability: the canvas scales to ~390px on phones, so 13px type renders ~6px.
+  // Coarse pointers get a global font scale (crt.FSCALE); fine pointers stay at 1.
+  if(matchMedia('(pointer: coarse)').matches)crt.setFontScale(1.35);
 
   // pointer bus: client coords -> 800x600 canvas coords; modes opt in via def.click(x,y)
   cv.addEventListener('pointerdown',e=>{

@@ -35,6 +35,23 @@
   .dk.menu{--dk:34px;border-radius:50%;}
   .deck .dk:active,.deck .dk.held{box-shadow:inset 0 4px 10px rgba(0,0,0,.85),inset 0 -1px 0 rgba(255,200,120,.04);filter:brightness(1.3);transform:translateY(1px);}
   .deck .dk.fire:active,.deck .dk.fire.held{box-shadow:inset 0 5px 14px rgba(0,0,0,.8),0 0 14px rgba(255,90,40,.32);filter:brightness(1.15);transform:translateY(1px);}
+  .deck .dk.latched{filter:brightness(1.35);color:#ffb24a;box-shadow:inset 0 0 9px rgba(255,178,74,.35),inset 0 1px 0 rgba(255,200,120,.16),0 0 10px rgba(255,178,74,.28),0 4px 8px rgba(0,0,0,.55);} /* engaged latch: lit steady, not pressed */
+  /* ---- aux terminal: separate phosphor readout above the cabinet (markup injected by
+          terminal.js on ALL pointers). An external magnifier for the corner command-line —
+          the canvas log itself is sacred and untouched. Desktop body stacks as a column
+          (Gerald-sanctioned DOM; the canvas stays pixel-identical). ---- */
+  body{flex-direction:column;gap:12px;}
+  .auxterm{flex:none;width:min(92vw,860px);position:relative;overflow:hidden;background:#070503;border:1px solid #5a3a12;border-radius:10px;box-shadow:inset 0 0 18px rgba(255,178,74,.05),0 6px 18px rgba(0,0,0,.6);user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+  .auxterm::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0px,transparent 2px,rgba(0,0,0,.16) 3px,rgba(0,0,0,.16) 4px);}
+  .auxterm-head{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;border-bottom:1px solid rgba(90,58,18,.5);position:relative;z-index:1;background:#070503;}
+  .auxterm-keys{display:flex;gap:6px;position:relative;z-index:1;}
+  .auxterm-btn{appearance:none;border:none;cursor:pointer;font-family:inherit;font-size:11px;line-height:1;padding:5px 9px;border-radius:7px;color:#7a5a30;background:radial-gradient(circle at 35% 28%,#2a1f12,#0e0a07 78%);box-shadow:0 2px 4px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,200,120,.10),inset 0 -2px 4px rgba(0,0,0,.7);}
+  .auxterm-btn:active{box-shadow:inset 0 3px 7px rgba(0,0,0,.85);filter:brightness(1.3);transform:translateY(1px);}
+  .auxterm-btn:focus-visible{outline:2px solid var(--phosphor);outline-offset:2px}
+  .auxterm-scroll{overflow-y:auto;max-height:140px;padding:6px 10px 8px;color:var(--phosphor);text-shadow:0 0 6px rgba(255,178,74,.45);line-height:1.45;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;user-select:text;-webkit-user-select:text;}
+  .auxterm-line.old{opacity:.65}
+  @media (pointer:coarse){.auxterm-scroll{max-height:22vh}}
+  @media (pointer:coarse) and (max-height:700px){.auxterm-scroll{max-height:13vh}}
   @media (pointer:fine){.deck{display:none}}
   @media (pointer:coarse){
     body{flex-direction:column;gap:12px;min-height:100dvh;}
@@ -48,16 +65,16 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="cb" content="153483af">
-  <link rel="icon" type="image/svg+xml" href="./public/cb-shapes/21.svg?v=153483af">
-  <script src="./public/cb-badge.js?v=153483af" defer></script>
+  <meta name="cb" content="0b3251d9">
+  <link rel="icon" type="image/svg+xml" href="./public/cb-shapes/11.svg?v=0b3251d9">
+  <script src="./public/cb-badge.js?v=0b3251d9" defer></script>
   <!-- PWA / iOS — the cabinet ships installable -->
-  <link rel="manifest" href="./manifest.webmanifest?v=153483af">
+  <link rel="manifest" href="./manifest.webmanifest?v=0b3251d9">
   <meta name="theme-color" content="#080604">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SEED">
-  <link rel="apple-touch-icon" href="./icons/apple-touch-icon-180.png?v=153483af">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon-180.png?v=0b3251d9">
 </head>
 <body>
   <div class="cabinet">
@@ -67,6 +84,6 @@
     </div>
     <div class="panel"><span class="label">SEED · UNIT 01</span><button class="power" id="power" aria-label="Power"></button></div>
   </div>
-<script type="module" src="./main.js?v=153483af"></script>
+<script type="module" src="./main.js?v=0b3251d9"></script>
 </body>
 </html>

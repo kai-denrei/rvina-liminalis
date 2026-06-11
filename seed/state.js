@@ -24,7 +24,9 @@ export function anyPlayed(){return state.played.ballistic||state.played.asteroid
 
 /* the command-line log — PoC semantics: skip if identical to last entry; cap 5, shift oldest */
 const log=[];
-export function logLine(s){if(log[log.length-1]!==s){log.push(s);if(log.length>5)log.shift();}}
+const logFns=[]; // additive listeners (aux terminal magnifier) — the 5-line canvas cap above is untouched
+export function onLog(fn){logFns.push(fn);}
+export function logLine(s){if(log[log.length-1]!==s){log.push(s);if(log.length>5)log.shift();for(const fn of logFns)fn(s);}}
 export function getLog(){return log;}
 
 /* ------------------------------------------------------------------ *

@@ -9,9 +9,9 @@
 // command-line is sacred, bible §7); shapes (frame, pips, the doll) are ctx strokes.
 // Amber family only — no TEAL here; the colour of elsewhere stays in the stone and
 // the surface light. The hero is deliberately unnamed: '———'.
-import {ctx,txt,cw,drawMini,W,H} from '../crt.js';
-import {logLine,party,flags,FLAG} from '../state.js';
-import {AMBER,DIM,DEEP} from '../palette.js';
+import {ctx,txt,cw,drawMini,W,H} from '../crt.js?v=0b3251d9';
+import {logLine,party,flags,FLAG,xp} from '../state.js?v=0b3251d9';
+import {AMBER,DIM,DEEP} from '../palette.js?v=0b3251d9';
 
 /* ---------- constants ---------- */
 const CAP=18;                 // kg — roomy at the start (12 was punitive — Gerald, 2026-06-11); the choosing-what-to-keep beat re-stages with heavier loot later
@@ -78,6 +78,11 @@ export function pickup(item){
     else spares.push({level:lv});
   }
   else if(item.id==='bow'&&!hands)hands={id:'bow',kg:item.kg};
+  else if(item.id==='coins'){                          // a found stash joins the purse
+    const c=pack.find(p=>p.id==='coins');
+    if(c){c.count+=(item.count||1);c.kg=r1(c.kg+item.kg);}
+    else pack.push({id:'coins',kg:item.kg,count:item.count||1});
+  }
   else pack.push({id:item.id,kg:item.kg});             // a second bow, the idol, the mirror...
   return true;
 }
@@ -105,13 +110,15 @@ export function drawHeader(hp){
   const strip=partyList().map(p=>p.name+(p.bard?' ♪':'')).concat('———').join(' · ');
   txt(strip,40,28,AMBER,.9,13);                       // the hero is deliberately unnamed
   const pw=8,ph=11,g=3,py=29;
+  const lv='LV '+xp.level+' · XP '+xp.total;          // kills (and living) visibly pay
   const hpW=cw('HP',11)+6+3*(pw+g)-g;
   const tW=cw('TORCH',11)+6+5*(pw+g)-g;
-  let x=W-40-(hpW+16+tW);
+  let x=W-40-(hpW+16+tW+16+cw(lv,11));
   txt('HP',x,30,DEEP,.8,11);x+=cw('HP',11)+6;
   pips(x,py,Math.max(0,Math.min(3,hp)),3,pw,ph,g,.95);x+=3*(pw+g)-g+16;
   txt('TORCH',x,30,DEEP,.8,11);x+=cw('TORCH',11)+6;
-  pips(x,py,lit?Math.max(1,Math.ceil(lit.level*5)):0,5,pw,ph,g,.95);
+  pips(x,py,lit?Math.max(1,Math.ceil(lit.level*5)):0,5,pw,ph,g,.95);x+=5*(pw+g)-g+16;
+  txt(lv,x,30,DIM,.7,11);
 }
 
 /* ---------- panel: DM-lite paper-doll ---------- */
@@ -200,7 +207,7 @@ export function drawPanel(t){
   if(pack.length===0){txt('(nothing)',vx,y+1,DIM,.5,12);y+=22;}
   else for(let i=0;i<pack.length;i++){
     const it=pack[i];
-    txt('· '+it.id,vx-26,y+1,AMBER,.9,13);
+    txt('· '+(it.count?it.id+' ×'+it.count:it.id),vx-26,y+1,AMBER,.9,13);
     txt(f1(it.kg)+' KG',kx-cw(f1(it.kg)+' KG',12),y+2,DIM,.8,12);
     rows.push({y:y-2,h:22,act:dropPack.bind(null,i)});
     y+=22;
@@ -213,9 +220,11 @@ export function drawPanel(t){
   // selection cursor — the keyboard path rides the same rows the taps use
   if(rows.length){if(sel>=rows.length)sel=rows.length-1;if(sel<0)sel=0;txt('>',PX+10,rows[sel].y+4,AMBER,.95,13);}
 
-  // anchored hint at the frame's foot
+  // anchored hint at the frame's foot — HINT_S 10 (not 11): at the coarse-pointer font
+  // scale (crt.FSCALE) an 11px hint spans the full panel width and hits the bevel
+  const HINT_S=10;
   const hint='tap, or ↑↓ + ⏎, to drop · i / esc closes';
-  txt(hint,PX+PW/2-cw(hint,11)/2,PY+PH-26,DEEP,.7,11);
+  txt(hint,PX+PW/2-cw(hint,HINT_S)/2,PY+PH-26,DEEP,.7,HINT_S);
 }
 
 /* ---------- keyboard path: select a row, drop with enter ---------- */
